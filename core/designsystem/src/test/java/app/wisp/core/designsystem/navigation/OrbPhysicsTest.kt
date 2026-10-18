@@ -51,8 +51,8 @@ class OrbPhysicsTest {
 
         // When docked on the right, all fan items should fan out to the left (offsetX <= 0)
         positions.forEach { pos ->
-            assertTrue("offsetX should be <= 0 when docked on right, was ${pos.offsetX}", pos.offsetX <= 0f)
-            assertTrue("offsetY should be <= 0 (upwards), was ${pos.offsetY}", pos.offsetY <= 0f)
+            assertTrue("offsetX should be <= 0 when docked on right, was ${pos.offsetX}", pos.offsetX <= 0.001f)
+            assertTrue("offsetY should be <= 0 (upwards), was ${pos.offsetY}", pos.offsetY <= 0.001f)
         }
     }
 
@@ -63,8 +63,8 @@ class OrbPhysicsTest {
 
         // When docked on the left, all fan items should fan out to the right (offsetX >= 0)
         positions.forEach { pos ->
-            assertTrue("offsetX should be >= 0 when docked on left, was ${pos.offsetX}", pos.offsetX >= 0f)
-            assertTrue("offsetY should be <= 0 (upwards), was ${pos.offsetY}", pos.offsetY <= 0f)
+            assertTrue("offsetX should be >= 0 when docked on left, was ${pos.offsetX}", pos.offsetX >= -0.001f)
+            assertTrue("offsetY should be <= 0 (upwards), was ${pos.offsetY}", pos.offsetY <= 0.001f)
         }
     }
 }

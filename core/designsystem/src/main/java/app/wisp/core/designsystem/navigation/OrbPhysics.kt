@@ -73,8 +73,10 @@ object OrbPhysics {
         return spaces.mapIndexed { index, space ->
             val angleDeg = startAngle + step * index
             val angleRad = Math.toRadians(angleDeg)
-            val offsetX = (radius * cos(angleRad)).toFloat()
-            val offsetY = (radius * sin(angleRad)).toFloat()
+            var offsetX = (radius * cos(angleRad)).toFloat()
+            var offsetY = (radius * sin(angleRad)).toFloat()
+            if (kotlin.math.abs(offsetX) < 0.001f) offsetX = 0f
+            if (kotlin.math.abs(offsetY) < 0.001f) offsetY = 0f
 
             FanItemPosition(
                 space = space,
