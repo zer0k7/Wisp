@@ -1,0 +1,65 @@
+name: Wisp CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-verify:
+    name: Lint, Test & Assemble
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant Execute Permission for Gradle Wrapper
+        run: chmod +x gradlew
+
+      - name: Run Detekt
+        run: ./gradlew detekt
+
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Assemble Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: wisp-debug-${{ github.run_number }}.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Publish Test APK to GitHub Pre-release
+        if: success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk wisp-debug-${{ github.run_number }}.apk
+          gh release delete "test-apk" --yes --repo ${{ github.repository }} || true
+          git push --delete origin "test-apk" 2>/dev/null || true
+          gh release create "test-apk" wisp-debug-${{ github.run_number }}.apk \
+            --title "Wisp Test APK (Build #${{ github.run_number }})" \
+            --notes "Automated testing pre-release APK built by GitHub Actions CI from branch \`${{ github.ref_name }}\` (commit \`${{ github.sha }}\`)." \
+            --prerelease \
+            --repo ${{ github.repository }}
