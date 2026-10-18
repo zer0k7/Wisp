@@ -1,5 +1,6 @@
 package app.wisp.core.designsystem.navigation
 
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Inbox
