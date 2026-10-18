@@ -1,11 +1,10 @@
 package app.wisp.core.designsystem.navigation
 
-import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.TrendingDown
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -28,7 +27,7 @@ enum class NavSpace(
     ),
     TRACKER(
         title = "Tracker",
-        icon = Icons.Rounded.TrendingDown,
+        icon = Icons.AutoMirrored.Rounded.TrendingDown,
         contentDescription = "Navigate to Price Tracker space"
     ),
     SEARCH(

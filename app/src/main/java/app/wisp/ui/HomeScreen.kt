@@ -284,7 +284,7 @@ private fun BoardsSpaceContent(
                     )
                     Text(
                         text = "6 items • 2 price drops",
-                        style = typography.bodySmall,
+                        style = typography.labelSmall,
                         color = colors.accentB
                     )
                 }
@@ -302,7 +302,7 @@ private fun BoardsSpaceContent(
                     )
                     Text(
                         text = "12 items • Updated today",
-                        style = typography.bodySmall,
+                        style = typography.labelSmall,
                         color = colors.accentA
                     )
                 }
