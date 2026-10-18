@@ -20,8 +20,11 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import androidx.test.ext.junit.runners.AndroidJUnit4
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(AndroidJUnit4::class)
 class BoardsViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
@@ -86,6 +89,9 @@ class BoardsViewModelTest {
             }
         }
 
+        override suspend fun findItemByUrl(url: String): WishItemEntity? =
+            itemsList.find { it.url == url }
+
         override suspend fun seedInitialDataIfEmpty() {
             if (boardsList.isEmpty()) {
                 val seedBoard = BoardEntity(
@@ -106,6 +112,7 @@ class BoardsViewModelTest {
         Dispatchers.setMain(testDispatcher)
         fakeRepo = FakeWishlistRepository()
         viewModel = BoardsViewModel(fakeRepo)
+        viewModel.ioDispatcher = testDispatcher
     }
 
     @After
@@ -255,5 +262,33 @@ class BoardsViewModelTest {
         advanceUntilIdle()
 
         assertNull(viewModel.selectedItem.value)
+    }
+
+    @Test
+    fun testCheckDuplicateReturnsItemWhenExists() = runTest(testDispatcher) {
+        val item = WishItemEntity(id = "item_dup", boardId = "b1", title = "Duplicate", url = "https://example.com/p1")
+        fakeRepo.saveItem(item)
+
+        val result = viewModel.checkDuplicate("https://example.com/p1")
+        assertEquals("item_dup", result?.id)
+
+        val notFound = viewModel.checkDuplicate("https://example.com/other")
+        assertNull(notFound)
+    }
+
+    @Test
+    fun testCaptureUrlSavesItem() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        val defaultBoardId = fakeRepo.boardsList.first().id
+
+        var capturedResult: WishItemEntity? = null
+        viewModel.captureUrl(url = "https://example.com/product", targetBoardId = defaultBoardId) {
+            capturedResult = it
+        }
+        advanceUntilIdle()
+
+        val savedItem = fakeRepo.itemsList.find { it.url?.contains("example.com") == true }
+        assertNotNull(savedItem)
+        assertEquals(defaultBoardId, savedItem?.boardId)
     }
 }

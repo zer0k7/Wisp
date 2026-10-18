@@ -19,6 +19,7 @@ import javax.inject.Inject
 class BoardsViewModel @Inject constructor(
     private val wishlistRepository: WishlistRepository
 ) : ViewModel() {
+    var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
 
     init {
         viewModelScope.launch {
@@ -148,6 +149,40 @@ class BoardsViewModel @Inject constructor(
         }
     }
 
+    suspend fun checkDuplicate(url: String): WishItemEntity? {
+        if (url.isBlank()) return null
+        return wishlistRepository.findItemByUrl(url.trim())
+    }
+
+    fun captureUrl(
+        url: String,
+        targetBoardId: String? = null,
+        onComplete: ((WishItemEntity) -> Unit)? = null
+    ) {
+        if (url.isBlank()) return
+        viewModelScope.launch {
+            val metadata = app.wisp.core.common.metadata.LinkMetadataExtractor.extract(url, ioDispatcher)
+            val effectiveBoardId = targetBoardId
+                ?: _selectedBoard.value?.id
+                ?: boards.value.firstOrNull()?.id
+                ?: "board_default"
+
+            val item = WishItemEntity(
+                id = UUID.randomUUID().toString(),
+                boardId = effectiveBoardId,
+                title = metadata.title,
+                url = metadata.canonicalUrl ?: url.trim(),
+                price = metadata.price ?: 0.0,
+                currency = metadata.currency,
+                store = metadata.store,
+                imageUrl = metadata.imageUrl,
+                notes = metadata.description
+            )
+            wishlistRepository.saveItem(item)
+            onComplete?.invoke(item)
+        }
+    }
+
     fun deleteItem(id: String) {
         viewModelScope.launch {
             wishlistRepository.deleteItem(id)
@@ -168,15 +203,6 @@ class BoardsViewModel @Inject constructor(
 
     private fun extractStore(url: String?): String? {
         if (url.isNullOrBlank()) return null
-        return when {
-            url.contains("amazon", ignoreCase = true) -> "Amazon"
-            url.contains("flipkart", ignoreCase = true) -> "Flipkart"
-            url.contains("myntra", ignoreCase = true) -> "Myntra"
-            url.contains("ajio", ignoreCase = true) -> "Ajio"
-            url.contains("nike", ignoreCase = true) -> "Nike"
-            url.contains("zara", ignoreCase = true) -> "Zara"
-            url.contains("apple", ignoreCase = true) -> "Apple"
-            else -> url.substringAfter("://").substringBefore("/").replace("www.", "")
-        }
+        return app.wisp.core.common.metadata.LinkMetadataExtractor.extractStore(url)
     }
 }

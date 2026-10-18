@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
                             boardsViewModel.moveItemToBoard(itemId, targetBoardId)
                         },
                         onUpdateItem = { item -> boardsViewModel.updateWishItem(item) },
+                        onSaveClipboardLink = { url -> boardsViewModel.captureUrl(url) },
                         currentPreset = themeSpec.preset,
                         onPresetSelected = { preset -> themeViewModel.selectPreset(preset) },
                         currentSpace = currentSpace,
