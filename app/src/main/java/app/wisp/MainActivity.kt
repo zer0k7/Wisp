@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.wisp.core.designsystem.theme.WispTheme
+import app.wisp.ui.BoardsViewModel
 import app.wisp.ui.HomeScreen
 import app.wisp.ui.NavigationViewModel
 import app.wisp.ui.ThemeViewModel
@@ -21,6 +22,7 @@ class MainActivity : ComponentActivity() {
 
     private val themeViewModel: ThemeViewModel by viewModels()
     private val navigationViewModel: NavigationViewModel by viewModels()
+    private val boardsViewModel: BoardsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,12 +34,29 @@ class MainActivity : ComponentActivity() {
             val orbPosition by navigationViewModel.orbPositionRatio.collectAsStateWithLifecycle()
             val quickAddTriggered by navigationViewModel.quickAddTriggered.collectAsStateWithLifecycle()
 
+            val boards by boardsViewModel.boards.collectAsStateWithLifecycle()
+            val items by boardsViewModel.allItems.collectAsStateWithLifecycle()
+            val priceDrops by boardsViewModel.priceDrops.collectAsStateWithLifecycle()
+            val selectedBoard by boardsViewModel.selectedBoard.collectAsStateWithLifecycle()
+
             WispTheme(themeSpec = themeSpec) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = WispTheme.colors.background
                 ) {
                     HomeScreen(
+                        boards = boards,
+                        items = items,
+                        priceDrops = priceDrops,
+                        selectedBoard = selectedBoard,
+                        onOpenBoard = { board -> boardsViewModel.openBoard(board) },
+                        onCloseBoard = { boardsViewModel.closeBoard() },
+                        onCreateBoard = { name, icon -> boardsViewModel.createBoard(name, icon) },
+                        onDeleteBoard = { boardId -> boardsViewModel.deleteBoard(boardId) },
+                        onAddWishItem = { title, url, price, boardId ->
+                            boardsViewModel.addWishItem(title, url, price, boardId)
+                        },
+                        onDeleteItem = { itemId -> boardsViewModel.deleteItem(itemId) },
                         currentPreset = themeSpec.preset,
                         onPresetSelected = { preset -> themeViewModel.selectPreset(preset) },
                         currentSpace = currentSpace,

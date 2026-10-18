@@ -17,17 +17,21 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,9 +39,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import app.wisp.core.database.model.BoardEntity
+import app.wisp.core.database.model.WishItemEntity
 import app.wisp.core.designsystem.components.WispButton
 import app.wisp.core.designsystem.components.WispCard
 import app.wisp.core.designsystem.components.WispChip
@@ -53,6 +63,16 @@ import app.wisp.core.designsystem.theme.WispTheme
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
+    boards: List<BoardEntity> = emptyList(),
+    items: List<WishItemEntity> = emptyList(),
+    priceDrops: List<WishItemEntity> = emptyList(),
+    selectedBoard: BoardEntity? = null,
+    onOpenBoard: (BoardEntity) -> Unit = {},
+    onCloseBoard: () -> Unit = {},
+    onCreateBoard: (String, String) -> Unit = { _, _ -> },
+    onDeleteBoard: (String) -> Unit = {},
+    onAddWishItem: (title: String, url: String, price: Double, boardId: String?) -> Unit = { _, _, _, _ -> },
+    onDeleteItem: (String) -> Unit = {},
     currentPreset: ThemePreset = ThemePreset.MIDNIGHT_INK,
     onPresetSelected: (ThemePreset) -> Unit = {},
     currentSpace: NavSpace = NavSpace.BOARDS,
@@ -68,16 +88,22 @@ fun HomeScreen(
 ) {
     val colors = WispTheme.colors
     val spacing = WispTheme.spacing
-    val shapes = WispTheme.shapes
     val typography = WispTheme.typography
-    val themeName = WispTheme.spec.name
+    val haptic = LocalHapticFeedback.current
 
+    var quickAddTitle by remember { mutableStateOf("") }
     var quickAddUrl by remember { mutableStateOf("") }
+    var quickAddPrice by remember { mutableStateOf("") }
+    var selectedTargetBoardId by remember { mutableStateOf(boards.firstOrNull()?.id ?: "") }
+
+    var isNewBoardSheetOpen by remember { mutableStateOf(false) }
+    var newBoardName by remember { mutableStateOf("") }
+    var newBoardIcon by remember { mutableStateOf("✨") }
+
     var internalSelectedSpace by remember { mutableStateOf(currentSpace) }
     var internalNavStyle by remember { mutableStateOf(navStyle) }
     var internalQuickAdd by remember { mutableStateOf(quickAddTriggered) }
 
-    // Keep internal and external states synchronized
     val effectiveSpace = if (currentSpace != NavSpace.BOARDS) currentSpace else internalSelectedSpace
     val effectiveNavStyle = if (navStyle != NavStyleType.ORB_DOCK) navStyle else internalNavStyle
     val effectiveQuickAdd = quickAddTriggered || internalQuickAdd
@@ -109,24 +135,53 @@ fun HomeScreen(
                 .statusBarsPadding()
         ) {
             when (space) {
-                NavSpace.BOARDS -> BoardsSpaceContent(
-                    currentPreset = currentPreset,
-                    onPresetSelected = onPresetSelected,
-                    themeName = themeName
-                )
-                NavSpace.INBOX -> InboxSpaceContent(
+                NavSpace.BOARDS -> {
+                    if (selectedBoard == null) {
+                        RealBoardsGrid(
+                            boards = boards,
+                            items = items,
+                            onOpenBoard = onOpenBoard,
+                            onOpenCreateBoard = { isNewBoardSheetOpen = true }
+                        )
+                    } else {
+                        BoardDetailView(
+                            board = selectedBoard,
+                            items = items.filter { it.boardId == selectedBoard.id },
+                            onBack = onCloseBoard,
+                            onDeleteItem = onDeleteItem,
+                            onDeleteBoard = {
+                                onDeleteBoard(selectedBoard.id)
+                            },
+                            onAddItem = {
+                                selectedTargetBoardId = selectedBoard.id
+                                internalQuickAdd = true
+                            }
+                        )
+                    }
+                }
+                NavSpace.INBOX -> RealInboxSpace(
+                    items = items,
+                    onDeleteItem = onDeleteItem,
                     onQuickAdd = { internalQuickAdd = true }
                 )
-                NavSpace.TRACKER -> TrackerSpaceContent()
-                NavSpace.SEARCH -> SearchSpaceContent()
-                NavSpace.YOU -> YouSpaceContent(
+                NavSpace.TRACKER -> RealTrackerSpace(
+                    priceDrops = priceDrops,
+                    onDeleteItem = onDeleteItem
+                )
+                NavSpace.SEARCH -> RealSearchSpace(
+                    items = items,
+                    onDeleteItem = onDeleteItem
+                )
+                NavSpace.YOU -> RealStudioSettingsSpace(
                     currentNavStyle = effectiveNavStyle,
                     onNavStyleSelected = { style ->
                         internalNavStyle = style
                         onNavStyleSelected(style)
                     },
                     currentPreset = currentPreset,
-                    onPresetSelected = onPresetSelected
+                    onPresetSelected = onPresetSelected,
+                    boardsCount = boards.size,
+                    itemsCount = items.size
                 )
             }
 
@@ -150,22 +205,52 @@ fun HomeScreen(
                                 style = typography.headlineMedium,
                                 color = colors.text
                             )
-                            Text(
-                                text = "Paste a product link from Amazon, Flipkart, or any store.",
-                                style = typography.bodyMedium,
-                                color = colors.textMuted
+                            WispTextField(
+                                value = quickAddTitle,
+                                onValueChange = { quickAddTitle = it },
+                                placeholder = "Item name (e.g. Wireless Headphones)..."
                             )
                             WispTextField(
                                 value = quickAddUrl,
                                 onValueChange = { quickAddUrl = it },
-                                placeholder = "https://amazon.in/dp/..."
+                                placeholder = "Paste link (Amazon, Flipkart, etc.)..."
                             )
+                            WispTextField(
+                                value = quickAddPrice,
+                                onValueChange = { quickAddPrice = it },
+                                placeholder = "Price (e.g. 2499)..."
+                            )
+
+                            // Select Board Chips
+                            if (boards.isNotEmpty()) {
+                                Text(
+                                    text = "Save to Board:",
+                                    style = typography.labelLarge,
+                                    color = colors.textMuted
+                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(spacing.small)
+                                ) {
+                                    val currentBoardChoice = selectedTargetBoardId.ifBlank { boards.first().id }
+                                    boards.forEach { b ->
+                                        WispChip(
+                                            label = "${b.icon} ${b.name}",
+                                            selected = b.id == currentBoardChoice,
+                                            onClick = { selectedTargetBoardId = b.id }
+                                        )
+                                    }
+                                }
+                            }
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End
                             ) {
                                 WispButton(
-                                    text = "Close",
+                                    text = "Cancel",
                                     onClick = {
                                         internalQuickAdd = false
                                         onDismissQuickAdd()
@@ -173,11 +258,87 @@ fun HomeScreen(
                                 )
                                 Spacer(modifier = Modifier.width(spacing.small))
                                 WispButton(
-                                    text = "Save Wish",
+                                    text = "Save Item",
                                     onClick = {
+                                        val priceVal = quickAddPrice.toDoubleOrNull() ?: 0.0
+                                        val targetBoard = selectedTargetBoardId.ifBlank { boards.firstOrNull()?.id }
+                                        onAddWishItem(quickAddTitle, quickAddUrl, priceVal, targetBoard)
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        quickAddTitle = ""
                                         quickAddUrl = ""
+                                        quickAddPrice = ""
                                         internalQuickAdd = false
                                         onDismissQuickAdd()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Create New Board Sheet
+            if (isNewBoardSheetOpen) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    WispSheet(
+                        modifier = Modifier.fillMaxWidth(),
+                        glass = true,
+                        showHandle = true
+                    ) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(spacing.medium),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Create New Board",
+                                style = typography.headlineMedium,
+                                color = colors.text
+                            )
+                            WispTextField(
+                                value = newBoardName,
+                                onValueChange = { newBoardName = it },
+                                placeholder = "Board name (e.g. Dream Travel, Sneaker Grail)..."
+                            )
+
+                            Text(
+                                text = "Choose Icon:",
+                                style = typography.labelLarge,
+                                color = colors.textMuted
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(spacing.small)
+                            ) {
+                                listOf("✨", "💻", "👟", "🎁", "📚", "🏠", "✈️").forEach { icon ->
+                                    WispChip(
+                                        label = icon,
+                                        selected = newBoardIcon == icon,
+                                        onClick = { newBoardIcon = icon }
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                WispButton(
+                                    text = "Cancel",
+                                    onClick = { isNewBoardSheetOpen = false }
+                                )
+                                Spacer(modifier = Modifier.width(spacing.small))
+                                WispButton(
+                                    text = "Create Board",
+                                    onClick = {
+                                        if (newBoardName.isNotBlank()) {
+                                            onCreateBoard(newBoardName, newBoardIcon)
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            newBoardName = ""
+                                            isNewBoardSheetOpen = false
+                                        }
                                     }
                                 )
                             }
@@ -190,18 +351,16 @@ fun HomeScreen(
 }
 
 @Composable
-private fun BoardsSpaceContent(
-    currentPreset: ThemePreset,
-    onPresetSelected: (ThemePreset) -> Unit,
-    themeName: String
+private fun RealBoardsGrid(
+    boards: List<BoardEntity>,
+    items: List<WishItemEntity>,
+    onOpenBoard: (BoardEntity) -> Unit,
+    onOpenCreateBoard: () -> Unit
 ) {
     val colors = WispTheme.colors
     val spacing = WispTheme.spacing
     val shapes = WispTheme.shapes
     val typography = WispTheme.typography
-
-    var buttonTapCount by remember { mutableIntStateOf(0) }
-    var isButtonLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -210,7 +369,7 @@ private fun BoardsSpaceContent(
             .padding(spacing.medium),
         verticalArrangement = Arrangement.spacedBy(spacing.medium)
     ) {
-        // Header
+        // App Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -223,7 +382,7 @@ private fun BoardsSpaceContent(
                     color = colors.text
                 )
                 Text(
-                    text = "Visual wishlist organizer",
+                    text = "${boards.size} boards • ${items.size} saved wishes",
                     style = typography.bodyMedium,
                     color = colors.textMuted
                 )
@@ -233,120 +392,375 @@ private fun BoardsSpaceContent(
                 modifier = Modifier
                     .clip(shapes.pill)
                     .background(colors.surfaceHigh)
+                    .springPress(onClick = onOpenCreateBoard)
                     .padding(horizontal = spacing.medium, vertical = spacing.small)
-                    .semantics {
-                        contentDescription = "Active preset is $themeName"
-                    }
             ) {
-                Text(
-                    text = themeName,
-                    style = typography.labelSmall,
-                    color = colors.accentB
-                )
-            }
-        }
-
-        // Theme Presets Row
-        Text(
-            text = "Theme Presets",
-            style = typography.titleMedium,
-            color = colors.text
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(spacing.small)
-        ) {
-            ThemePreset.entries.forEach { preset ->
-                WispChip(
-                    label = preset.displayName,
-                    selected = currentPreset == preset,
-                    onClick = { onPresetSelected(preset) }
-                )
-            }
-        }
-
-        // Boards Preview Cards
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(spacing.small)
-        ) {
-            WispCard(
-                modifier = Modifier.weight(1f),
-                glass = true
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
-                    Text(
-                        text = "Tech Setup",
-                        style = typography.titleMedium,
-                        color = colors.text
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = null,
+                        tint = colors.accentB,
+                        modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "6 items • 2 price drops",
+                        text = "New Board",
                         style = typography.labelSmall,
                         color = colors.accentB
                     )
                 }
             }
+        }
 
-            WispCard(
-                modifier = Modifier.weight(1f),
-                glass = true
+        // 2-Column Grid of Board Cards
+        val chunkedBoards = boards.chunked(2)
+        chunkedBoards.forEach { rowBoards ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(spacing.medium)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
-                    Text(
-                        text = "Wardrobe",
-                        style = typography.titleMedium,
-                        color = colors.text
-                    )
-                    Text(
-                        text = "12 items • Updated today",
-                        style = typography.labelSmall,
-                        color = colors.accentA
+                rowBoards.forEach { board ->
+                    val boardItems = items.filter { it.boardId == board.id }
+                    WispCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .springPress(onClick = { onOpenBoard(board) }),
+                        glass = true
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = board.icon,
+                                    style = typography.headlineLarge
+                                )
+                                Text(
+                                    text = "${boardItems.size} items",
+                                    style = typography.labelSmall,
+                                    color = colors.accentB
+                                )
+                            }
+                            Text(
+                                text = board.name,
+                                style = typography.titleMedium,
+                                color = colors.text
+                            )
+                            if (boardItems.isNotEmpty()) {
+                                Text(
+                                    text = boardItems.first().title,
+                                    style = typography.labelSmall,
+                                    color = colors.textMuted,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+                if (rowBoards.size == 1) {
+                    // Dashed "+ New Board" Card
+                    DashedNewBoardCard(
+                        modifier = Modifier.weight(1f),
+                        onClick = onOpenCreateBoard
                     )
                 }
             }
         }
 
-        // Interactive Spring Button UX
-        Text(
-            text = "Spring Action Feedback",
-            style = typography.titleMedium,
-            color = colors.text
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(spacing.small)
-        ) {
-            WispButton(
-                text = if (isButtonLoading) "Processing..." else "Tap Me (Count: $buttonTapCount)",
-                loading = isButtonLoading,
-                onClick = { buttonTapCount++ },
-                modifier = Modifier.weight(1.2f)
-            )
-            WispButton(
-                text = if (isButtonLoading) "Stop Load" else "Simulate Load",
-                onClick = { isButtonLoading = !isButtonLoading },
-                modifier = Modifier.weight(1f)
-            )
+        // If even number of boards, show "+ New Board" tile at the end
+        if (boards.size % 2 == 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(spacing.medium)
+            ) {
+                DashedNewBoardCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = onOpenCreateBoard
+                )
+                Spacer(modifier = Modifier.weight(1f))
+            }
         }
-        Text(
-            text = if (buttonTapCount == 0) {
-                "Swipe left/right to switch spaces. Pull down anywhere for command bar."
-            } else {
-                "Success! Tapped $buttonTapCount time(s) with tactile haptics."
-            },
-            style = typography.bodyMedium,
-            color = if (buttonTapCount > 0) colors.success else colors.textMuted
-        )
 
         Spacer(modifier = Modifier.height(spacing.extraLarge))
     }
 }
 
 @Composable
-private fun InboxSpaceContent(
+private fun DashedNewBoardCard(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val colors = WispTheme.colors
+    val spacing = WispTheme.spacing
+    val shapes = WispTheme.shapes
+    val typography = WispTheme.typography
+
+    Box(
+        modifier = modifier
+            .clip(shapes.card)
+            .background(colors.surfaceHigh.copy(alpha = 0.5f))
+            .border(
+                width = spacing.stroke,
+                color = colors.outline,
+                shape = shapes.card
+            )
+            .springPress(onClick = onClick)
+            .padding(spacing.large),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(spacing.small)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(colors.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = "Create new board",
+                    tint = colors.accentB,
+                    modifier = Modifier.size(spacing.large)
+                )
+            }
+            Text(
+                text = "New Board",
+                style = typography.titleMedium,
+                color = colors.accentB
+            )
+        }
+    }
+}
+
+@Composable
+private fun BoardDetailView(
+    board: BoardEntity,
+    items: List<WishItemEntity>,
+    onBack: () -> Unit,
+    onDeleteItem: (String) -> Unit,
+    onDeleteBoard: () -> Unit,
+    onAddItem: () -> Unit
+) {
+    val colors = WispTheme.colors
+    val spacing = WispTheme.spacing
+    val typography = WispTheme.typography
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(spacing.medium)
+    ) {
+        // Top Bar
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(spacing.small)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(colors.surfaceHigh)
+                        .springPress(onClick = onBack),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back to boards",
+                        tint = colors.text
+                    )
+                }
+                Column {
+                    Text(
+                        text = "${board.icon} ${board.name}",
+                        style = typography.headlineLarge,
+                        color = colors.text
+                    )
+                    Text(
+                        text = "${items.size} saved items",
+                        style = typography.labelSmall,
+                        color = colors.textMuted
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(colors.surfaceHigh)
+                    .springPress(onClick = onDeleteBoard),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Delete,
+                    contentDescription = "Delete board",
+                    tint = colors.danger,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        // Add item button inside board
+        WispButton(
+            text = "+ Add Wish to ${board.name}",
+            onClick = onAddItem,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Items List
+        if (items.isEmpty()) {
+            WispCard(
+                modifier = Modifier.fillMaxWidth(),
+                glass = true
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(spacing.small)
+                ) {
+                    Text(
+                        text = "No Items in this Board",
+                        style = typography.titleMedium,
+                        color = colors.text
+                    )
+                    Text(
+                        text = "Tap '+ Add Wish' or use the floating Orb to save items here.",
+                        style = typography.bodyMedium,
+                        color = colors.textMuted
+                    )
+                }
+            }
+        } else {
+            items.forEach { item ->
+                WishItemCard(
+                    item = item,
+                    onDelete = { onDeleteItem(item.id) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(spacing.extraLarge))
+    }
+}
+
+@Composable
+private fun WishItemCard(
+    item: WishItemEntity,
+    onDelete: () -> Unit
+) {
+    val colors = WispTheme.colors
+    val spacing = WispTheme.spacing
+    val typography = WispTheme.typography
+
+    WispCard(
+        modifier = Modifier.fillMaxWidth(),
+        glass = true
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = item.title,
+                        style = typography.titleMedium,
+                        color = colors.text
+                    )
+                    val storeName = item.store
+                    if (!storeName.isNullOrBlank()) {
+                        Text(
+                            text = storeName,
+                            style = typography.labelSmall,
+                            color = colors.accentB
+                        )
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(colors.surface)
+                        .springPress(onClick = onDelete),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Delete,
+                        contentDescription = "Delete item",
+                        tint = colors.textMuted,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (item.price > 0) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)) {
+                        Text(
+                            text = "${item.currency}${item.price.toInt()}",
+                            style = typography.headlineMedium,
+                            color = colors.text
+                        )
+                        val origPrice = item.originalPrice
+                        if (origPrice != null && origPrice > item.price) {
+                            Text(
+                                text = "${item.currency}${origPrice.toInt()}",
+                                style = typography.bodySmall(colors.textMuted)
+                            )
+                        }
+                    }
+                }
+
+                if (!item.url.isNullOrBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.OpenInNew,
+                            contentDescription = null,
+                            tint = colors.accentA,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "Link Saved",
+                            style = typography.labelSmall,
+                            color = colors.accentA
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun app.wisp.core.designsystem.theme.WispTypography.bodySmall(color: Color): androidx.compose.ui.text.TextStyle {
+    return this.labelSmall.copy(color = color)
+}
+
+@Composable
+private fun RealInboxSpace(
+    items: List<WishItemEntity>,
+    onDeleteItem: (String) -> Unit,
     onQuickAdd: () -> Unit
 ) {
     val colors = WispTheme.colors
@@ -366,37 +780,40 @@ private fun InboxSpaceContent(
             color = colors.text
         )
         Text(
-            text = "Unsorted links and rapid captures waiting to be sorted into boards.",
+            text = "Saved links and wishes waiting to be categorized",
             style = typography.bodyMedium,
             color = colors.textMuted
         )
 
-        WispCard(
-            modifier = Modifier.fillMaxWidth(),
-            glass = true
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+        WispButton(
+            text = "+ Quick Add Wish",
+            onClick = onQuickAdd,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (items.isEmpty()) {
+            WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
                 Text(
-                    text = "No Unorganized Wishes",
-                    style = typography.headlineMedium,
-                    color = colors.text
-                )
-                Text(
-                    text = "Tap the + button on the Orb Dock or use the Command Bar to quick-capture links.",
+                    text = "Inbox is empty! Tap the + button to save your first link.",
                     style = typography.bodyMedium,
                     color = colors.textMuted
                 )
-                WispButton(
-                    text = "Quick Add Item",
-                    onClick = onQuickAdd
-                )
+            }
+        } else {
+            items.forEach { item ->
+                WishItemCard(item = item, onDelete = { onDeleteItem(item.id) })
             }
         }
+
+        Spacer(modifier = Modifier.height(spacing.extraLarge))
     }
 }
 
 @Composable
-private fun TrackerSpaceContent() {
+private fun RealTrackerSpace(
+    priceDrops: List<WishItemEntity>,
+    onDeleteItem: (String) -> Unit
+) {
     val colors = WispTheme.colors
     val spacing = WispTheme.spacing
     val typography = WispTheme.typography
@@ -420,7 +837,7 @@ private fun TrackerSpaceContent() {
                     color = colors.text
                 )
                 Text(
-                    text = "Offline background monitoring for drops",
+                    text = "Real-time drops on your saved wishes",
                     style = typography.bodyMedium,
                     color = colors.textMuted
                 )
@@ -433,37 +850,67 @@ private fun TrackerSpaceContent() {
             )
         }
 
-        WispCard(
-            modifier = Modifier.fillMaxWidth(),
-            glass = true
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+        if (priceDrops.isEmpty()) {
+            WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
                 Text(
-                    text = "Hot Price Drop Alert",
-                    style = typography.headlineMedium,
-                    color = colors.hot
-                )
-                Text(
-                    text = "Sony WH-1000XM5 Noise Canceling Headphones dropped by ₹4,500 (-15%) on Amazon.",
+                    text = "No price drops detected yet. Wisp checks prices offline in the background.",
                     style = typography.bodyMedium,
-                    color = colors.text
-                )
-                Text(
-                    text = "Target Price: ₹24,990 • Current: ₹22,490",
-                    style = typography.labelLarge,
-                    color = colors.success
+                    color = colors.textMuted
                 )
             }
+        } else {
+            priceDrops.forEach { item ->
+                val dropAmount = (item.originalPrice ?: 0.0) - item.price
+                WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = item.title,
+                                style = typography.titleMedium,
+                                color = colors.text,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "-${item.currency}${dropAmount.toInt()}",
+                                style = typography.labelLarge,
+                                color = colors.hot
+                            )
+                        }
+                        Text(
+                            text = "Now ${item.currency}${item.price.toInt()} (was ${item.currency}${item.originalPrice?.toInt()})",
+                            style = typography.bodyMedium,
+                            color = colors.success
+                        )
+                    }
+                }
+            }
         }
+
+        Spacer(modifier = Modifier.height(spacing.extraLarge))
     }
 }
 
 @Composable
-private fun SearchSpaceContent() {
+private fun RealSearchSpace(
+    items: List<WishItemEntity>,
+    onDeleteItem: (String) -> Unit
+) {
     val colors = WispTheme.colors
     val spacing = WispTheme.spacing
     val typography = WispTheme.typography
-    var searchInput by remember { mutableStateOf("") }
+
+    var searchQuery by remember { mutableStateOf("") }
+    val filtered = if (searchQuery.isBlank()) {
+        items
+    } else {
+        items.filter {
+            it.title.contains(searchQuery, ignoreCase = true) ||
+                (it.store?.contains(searchQuery, ignoreCase = true) == true)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -477,16 +924,10 @@ private fun SearchSpaceContent() {
             style = typography.displayLarge,
             color = colors.text
         )
-        Text(
-            text = "Search wish items, boards, tags, and stores",
-            style = typography.bodyMedium,
-            color = colors.textMuted
-        )
-
         WispTextField(
-            value = searchInput,
-            onValueChange = { searchInput = it },
-            placeholder = "Search gadgets, outfits, notes...",
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = "Search saved items, stores, products...",
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Search,
@@ -496,29 +937,28 @@ private fun SearchSpaceContent() {
             }
         )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(spacing.small)
-        ) {
-            listOf("All", "Price Drops", "Reserved", "Tech", "Fashion", "Priority 5").forEach { tag ->
-                WispChip(
-                    label = tag,
-                    selected = tag == "All",
-                    onClick = {}
-                )
-            }
+        Text(
+            text = "Results (${filtered.size})",
+            style = typography.labelLarge,
+            color = colors.accentB
+        )
+
+        filtered.forEach { item ->
+            WishItemCard(item = item, onDelete = { onDeleteItem(item.id) })
         }
+
+        Spacer(modifier = Modifier.height(spacing.extraLarge))
     }
 }
 
 @Composable
-private fun YouSpaceContent(
+private fun RealStudioSettingsSpace(
     currentNavStyle: NavStyleType,
     onNavStyleSelected: (NavStyleType) -> Unit,
     currentPreset: ThemePreset,
-    onPresetSelected: (ThemePreset) -> Unit
+    onPresetSelected: (ThemePreset) -> Unit,
+    boardsCount: Int,
+    itemsCount: Int
 ) {
     val colors = WispTheme.colors
     val spacing = WispTheme.spacing
@@ -532,31 +972,18 @@ private fun YouSpaceContent(
         verticalArrangement = Arrangement.spacedBy(spacing.medium)
     ) {
         Text(
-            text = "You & Studio",
+            text = "Studio & Settings",
             style = typography.displayLarge,
             color = colors.text
         )
-        Text(
-            text = "Total control over navigation style, themes, and offline privacy.",
-            style = typography.bodyMedium,
-            color = colors.textMuted
-        )
 
-        // Nav Style Settings
-        WispCard(
-            modifier = Modifier.fillMaxWidth(),
-            glass = true
-        ) {
+        // Navigation Style Selector
+        WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
             Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
                 Text(
                     text = "Navigation Style",
-                    style = typography.headlineLarge,
+                    style = typography.headlineMedium,
                     color = colors.accentB
-                )
-                Text(
-                    text = "Switch between Orb Dock, Edge Handle, Floating Pill, or Gesture-only navigation live.",
-                    style = typography.bodyMedium,
-                    color = colors.textMuted
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -573,15 +1000,12 @@ private fun YouSpaceContent(
             }
         }
 
-        // Theme Engine Presets
-        WispCard(
-            modifier = Modifier.fillMaxWidth(),
-            glass = true
-        ) {
+        // Theme Presets Selector
+        WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
             Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
                 Text(
-                    text = "WispTheme Presets",
-                    style = typography.headlineLarge,
+                    text = "Theme Presets",
+                    style = typography.headlineMedium,
                     color = colors.accentA
                 )
                 Row(
@@ -593,7 +1017,7 @@ private fun YouSpaceContent(
                     ThemePreset.entries.forEach { preset ->
                         WispChip(
                             label = preset.displayName,
-                            selected = currentPreset == preset,
+                            selected = preset == currentPreset,
                             onClick = { onPresetSelected(preset) }
                         )
                     }
@@ -601,11 +1025,8 @@ private fun YouSpaceContent(
             }
         }
 
-        // Privacy & Offline Info Card
-        WispCard(
-            modifier = Modifier.fillMaxWidth(),
-            glass = true
-        ) {
+        // Offline & Database Status
+        WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
             Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -618,13 +1039,13 @@ private fun YouSpaceContent(
                         modifier = Modifier.size(spacing.large)
                     )
                     Text(
-                        text = "100% Offline & Private",
+                        text = "100% Offline & Private Room DB",
                         style = typography.titleMedium,
                         color = colors.success
                     )
                 }
                 Text(
-                    text = "No trackers, no analytics, no cloud account needed. All wishlist data resides exclusively on your device.",
+                    text = "Database holds $boardsCount boards and $itemsCount wishes on this device. 0 analytics, 0 trackers.",
                     style = typography.bodyMedium,
                     color = colors.textMuted
                 )
