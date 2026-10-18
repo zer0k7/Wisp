@@ -23,6 +23,7 @@ interface WishlistRepository {
     suspend fun saveItem(item: WishItemEntity)
     suspend fun deleteItem(id: String)
     suspend fun updateItemStatus(id: String, status: String)
+    suspend fun moveItemToBoard(itemId: String, targetBoardId: String)
 
     suspend fun seedInitialDataIfEmpty()
 }
@@ -66,6 +67,10 @@ class RoomWishlistRepository(
 
     override suspend fun updateItemStatus(id: String, status: String) {
         wishItemDao.updateStatus(id, status)
+    }
+
+    override suspend fun moveItemToBoard(itemId: String, targetBoardId: String) {
+        wishItemDao.moveItemToBoard(itemId, targetBoardId)
     }
 
     override suspend fun seedInitialDataIfEmpty() {

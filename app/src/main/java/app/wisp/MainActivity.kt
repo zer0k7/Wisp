@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
             val items by boardsViewModel.allItems.collectAsStateWithLifecycle()
             val priceDrops by boardsViewModel.priceDrops.collectAsStateWithLifecycle()
             val selectedBoard by boardsViewModel.selectedBoard.collectAsStateWithLifecycle()
+            val selectedItem by boardsViewModel.selectedItem.collectAsStateWithLifecycle()
 
             WispTheme(themeSpec = themeSpec) {
                 Surface(
@@ -57,6 +58,16 @@ class MainActivity : ComponentActivity() {
                             boardsViewModel.addWishItem(title, url, price, boardId)
                         },
                         onDeleteItem = { itemId -> boardsViewModel.deleteItem(itemId) },
+                        selectedItem = selectedItem,
+                        onOpenItem = { item -> boardsViewModel.openItem(item) },
+                        onCloseItem = { boardsViewModel.closeItem() },
+                        onUpdateItemStatus = { itemId, status ->
+                            boardsViewModel.updateItemStatus(itemId, status)
+                        },
+                        onMoveItemToBoard = { itemId, targetBoardId ->
+                            boardsViewModel.moveItemToBoard(itemId, targetBoardId)
+                        },
+                        onUpdateItem = { item -> boardsViewModel.updateWishItem(item) },
                         currentPreset = themeSpec.preset,
                         onPresetSelected = { preset -> themeViewModel.selectPreset(preset) },
                         currentSpace = currentSpace,
