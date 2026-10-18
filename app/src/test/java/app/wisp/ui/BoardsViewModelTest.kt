@@ -283,7 +283,7 @@ class BoardsViewModelTest {
         }
         advanceUntilIdle()
 
-        val savedItem = fakeRepo.itemsList.find { it.url.contains("example.com") }
+        val savedItem = fakeRepo.itemsList.find { it.url?.contains("example.com") == true }
         assertNotNull(savedItem)
         assertEquals(defaultBoardId, savedItem?.boardId)
     }
