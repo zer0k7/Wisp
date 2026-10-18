@@ -44,6 +44,7 @@ fun HomeScreen(
     val spacing = WispTheme.spacing
     val shapes = WispTheme.shapes
     val typography = WispTheme.typography
+    val themeName = WispTheme.spec.name
 
     var textInput by remember { mutableStateOf("") }
     var isButtonLoading by remember { mutableStateOf(false) }
@@ -88,11 +89,11 @@ fun HomeScreen(
                         .background(colors.surfaceHigh)
                         .padding(horizontal = spacing.medium, vertical = spacing.small)
                         .semantics {
-                            contentDescription = "Active preset is ${WispTheme.spec.name}"
+                            contentDescription = "Active preset is $themeName"
                         }
                 ) {
                     Text(
-                        text = WispTheme.spec.name,
+                        text = themeName,
                         style = typography.labelSmall,
                         color = colors.accentB
                     )
