@@ -20,3 +20,8 @@ naming:
 complexity:
   TooManyFunctions:
     active: false
+  LongParameterList:
+    ignoreDefaultParameters: true
+    ignoreDataClasses: true
+    ignoreAnnotated: ['Composable']
+

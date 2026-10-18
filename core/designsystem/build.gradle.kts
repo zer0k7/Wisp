@@ -47,6 +47,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
+    testImplementation(libs.androidx.test.ext)
+    testImplementation(libs.androidx.activity.compose)
     testImplementation(libs.robolectric)
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)
