@@ -27,12 +27,14 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -82,6 +85,7 @@ fun HomeScreen(
     onUpdateItemStatus: (itemId: String, status: String) -> Unit = { _, _ -> },
     onMoveItemToBoard: (itemId: String, targetBoardId: String) -> Unit = { _, _ -> },
     onUpdateItem: (WishItemEntity) -> Unit = {},
+    onSaveClipboardLink: (String) -> Unit = {},
     currentPreset: ThemePreset = ThemePreset.MIDNIGHT_INK,
     onPresetSelected: (ThemePreset) -> Unit = {},
     currentSpace: NavSpace = NavSpace.BOARDS,
@@ -187,7 +191,8 @@ fun HomeScreen(
                         items = items,
                         onOpenItem = onOpenItem,
                         onDeleteItem = onDeleteItem,
-                        onQuickAdd = { internalQuickAdd = true }
+                        onQuickAdd = { internalQuickAdd = true },
+                        onSaveClipboardLink = onSaveClipboardLink
                     )
                     NavSpace.TRACKER -> RealTrackerSpace(
                         priceDrops = priceDrops,
@@ -1196,11 +1201,20 @@ private fun RealInboxSpace(
     items: List<WishItemEntity>,
     onOpenItem: (WishItemEntity) -> Unit,
     onDeleteItem: (String) -> Unit,
-    onQuickAdd: () -> Unit
+    onQuickAdd: () -> Unit,
+    onSaveClipboardLink: (String) -> Unit = {}
 ) {
     val colors = WispTheme.colors
     val spacing = WispTheme.spacing
     val typography = WispTheme.typography
+    val clipboardManager = LocalClipboardManager.current
+    var clipboardUrl by remember {
+        mutableStateOf(
+            clipboardManager.getText()?.text?.trim()?.let { text ->
+                if (text.startsWith("http://") || text.startsWith("https://")) text else null
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -1219,6 +1233,82 @@ private fun RealInboxSpace(
             style = typography.bodyMedium,
             color = colors.textMuted
         )
+
+        if (clipboardUrl != null) {
+            val detectedUrl = clipboardUrl!!
+            WispCard(
+                modifier = Modifier.fillMaxWidth(),
+                glass = true
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.small)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(colors.accentA.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.NotificationsActive,
+                                contentDescription = "Clipboard link detected",
+                                tint = colors.accentA,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Save link from clipboard?",
+                                style = typography.titleSmall,
+                                color = colors.text
+                            )
+                            Text(
+                                text = detectedUrl,
+                                style = typography.labelSmall,
+                                color = colors.textMuted,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(spacing.small))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)
+                    ) {
+                        WispButton(
+                            text = "Save",
+                            onClick = {
+                                onSaveClipboardLink(detectedUrl)
+                                clipboardUrl = null
+                            }
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(colors.surfaceHigh)
+                                .springPress(onClick = { clipboardUrl = null }),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Dismiss clipboard suggestion",
+                                tint = colors.textMuted,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
         WispButton(
             text = "+ Quick Add Wish",

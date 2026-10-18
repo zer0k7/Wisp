@@ -26,5 +26,7 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.core)
+    api(libs.jsoup)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

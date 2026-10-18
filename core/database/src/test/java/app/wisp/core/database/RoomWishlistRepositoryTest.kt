@@ -137,4 +137,22 @@ class RoomWishlistRepositoryTest {
         val moved = repository.getItem("item_move")
         assertEquals("b2", moved?.boardId)
     }
+
+    @Test
+    fun testFindItemByUrl() = runTest(testDispatcher) {
+        val item = WishItemEntity(
+            id = "url_test",
+            boardId = "b1",
+            title = "Sony XM5",
+            url = "https://amazon.in/dp/sony-xm5"
+        )
+        repository.saveItem(item)
+
+        val found = repository.findItemByUrl("https://amazon.in/dp/sony-xm5")
+        assertNotNull(found)
+        assertEquals("url_test", found?.id)
+
+        val notFound = repository.findItemByUrl("https://nonexistent.com")
+        assertNull(notFound)
+    }
 }

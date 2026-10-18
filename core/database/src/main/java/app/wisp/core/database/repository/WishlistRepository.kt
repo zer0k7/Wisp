@@ -24,6 +24,7 @@ interface WishlistRepository {
     suspend fun deleteItem(id: String)
     suspend fun updateItemStatus(id: String, status: String)
     suspend fun moveItemToBoard(itemId: String, targetBoardId: String)
+    suspend fun findItemByUrl(url: String): WishItemEntity?
 
     suspend fun seedInitialDataIfEmpty()
 }
@@ -72,6 +73,9 @@ class RoomWishlistRepository(
     override suspend fun moveItemToBoard(itemId: String, targetBoardId: String) {
         wishItemDao.moveItemToBoard(itemId, targetBoardId)
     }
+
+    override suspend fun findItemByUrl(url: String): WishItemEntity? =
+        wishItemDao.getItemByUrl(url)
 
     override suspend fun seedInitialDataIfEmpty() {
         val currentBoards = boardDao.getAllBoards().first()

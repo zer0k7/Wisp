@@ -27,6 +27,9 @@ interface WishItemDao {
     @Query("SELECT * FROM wish_items WHERE id = :id LIMIT 1")
     suspend fun getItemById(id: String): WishItemEntity?
 
+    @Query("SELECT * FROM wish_items WHERE url = :url LIMIT 1")
+    suspend fun getItemByUrl(url: String): WishItemEntity?
+
     @Query("SELECT COUNT(*) FROM wish_items WHERE boardId = :boardId")
     fun getItemCountForBoard(boardId: String): Flow<Int>
 

@@ -195,4 +195,35 @@ class HomeScreenScreenshotTest {
         }
         composeTestRule.onRoot().captureRoboImage()
     }
+
+    @Test
+    fun captureHomeScreen_InboxSpace() {
+        composeTestRule.setContent {
+            WispTheme(themeSpec = ThemeSpec.MidnightInk) {
+                HomeScreen(
+                    boards = sampleBoards,
+                    items = sampleItems,
+                    currentPreset = ThemeSpec.MidnightInk.preset,
+                    currentSpace = NavSpace.INBOX,
+                    navStyle = NavStyleType.ORB_DOCK
+                )
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun captureShareTargetSheet() {
+        composeTestRule.setContent {
+            WispTheme(themeSpec = ThemeSpec.MidnightInk) {
+                app.wisp.ui.ShareTargetContent(
+                    initialText = "Check out this Sony WH-1000XM5: https://amazon.in/dp/B09XS7JWHH",
+                    boards = sampleBoards,
+                    onSave = { _, _, _, _, _ -> },
+                    onDismiss = {}
+                )
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage()
+    }
 }

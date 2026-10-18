@@ -86,6 +86,9 @@ class BoardsViewModelTest {
             }
         }
 
+        override suspend fun findItemByUrl(url: String): WishItemEntity? =
+            itemsList.find { it.url == url }
+
         override suspend fun seedInitialDataIfEmpty() {
             if (boardsList.isEmpty()) {
                 val seedBoard = BoardEntity(
@@ -255,5 +258,33 @@ class BoardsViewModelTest {
         advanceUntilIdle()
 
         assertNull(viewModel.selectedItem.value)
+    }
+
+    @Test
+    fun testCheckDuplicateReturnsItemWhenExists() = runTest(testDispatcher) {
+        val item = WishItemEntity(id = "item_dup", boardId = "b1", title = "Duplicate", url = "https://example.com/p1")
+        fakeRepo.saveItem(item)
+
+        val result = viewModel.checkDuplicate("https://example.com/p1")
+        assertEquals("item_dup", result?.id)
+
+        val notFound = viewModel.checkDuplicate("https://example.com/other")
+        assertNull(notFound)
+    }
+
+    @Test
+    fun testCaptureUrlSavesItem() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        val defaultBoardId = fakeRepo.boardsList.first().id
+
+        var capturedResult: WishItemEntity? = null
+        viewModel.captureUrl("https://example.com/product") {
+            capturedResult = it
+        }
+        advanceUntilIdle()
+
+        val savedItem = fakeRepo.itemsList.find { it.url.contains("example.com") }
+        assertNotNull(savedItem)
+        assertEquals(defaultBoardId, savedItem?.boardId)
     }
 }
