@@ -45,8 +45,11 @@ dependencies {
     implementation(libs.androidx.core.ktx)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     testImplementation(libs.junit)
+    testImplementation(libs.androidx.test.ext)
+    testImplementation(libs.androidx.activity.compose)
     testImplementation(libs.robolectric)
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)

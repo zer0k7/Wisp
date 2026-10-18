@@ -77,6 +77,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
+    implementation(libs.androidx.datastore.preferences)
 
     // AndroidX & Lifecycle
     implementation(libs.androidx.core.ktx)

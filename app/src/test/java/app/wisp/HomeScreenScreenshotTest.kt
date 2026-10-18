@@ -24,10 +24,20 @@ class HomeScreenScreenshotTest {
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun captureHelloWorld_MidnightInk() {
+    fun captureHomeScreen_MidnightInk() {
         composeTestRule.setContent {
-            WispTheme(themeSpec = ThemeSpec.Default) {
-                HomeScreen()
+            WispTheme(themeSpec = ThemeSpec.MidnightInk) {
+                HomeScreen(currentPreset = ThemeSpec.MidnightInk.preset)
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun captureHomeScreen_PaperGlass() {
+        composeTestRule.setContent {
+            WispTheme(themeSpec = ThemeSpec.PaperGlass) {
+                HomeScreen(currentPreset = ThemeSpec.PaperGlass.preset)
             }
         }
         composeTestRule.onRoot().captureRoboImage()
