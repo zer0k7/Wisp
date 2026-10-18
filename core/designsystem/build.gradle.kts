@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     testImplementation(libs.junit)
     testImplementation(libs.androidx.test.ext)
