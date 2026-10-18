@@ -18,7 +18,10 @@ data class LinkMetadata(
 
 object LinkMetadataExtractor {
 
-    suspend fun extract(url: String): LinkMetadata = withContext(Dispatchers.IO) {
+    suspend fun extract(
+        url: String,
+        dispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO
+    ): LinkMetadata = withContext(dispatcher) {
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
             return@withContext fallbackFromUrl(url)
         }

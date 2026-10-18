@@ -20,8 +20,11 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import androidx.test.ext.junit.runners.AndroidJUnit4
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(AndroidJUnit4::class)
 class BoardsViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
@@ -109,6 +112,7 @@ class BoardsViewModelTest {
         Dispatchers.setMain(testDispatcher)
         fakeRepo = FakeWishlistRepository()
         viewModel = BoardsViewModel(fakeRepo)
+        viewModel.ioDispatcher = testDispatcher
     }
 
     @After

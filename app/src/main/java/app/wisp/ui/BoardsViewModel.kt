@@ -19,6 +19,7 @@ import javax.inject.Inject
 class BoardsViewModel @Inject constructor(
     private val wishlistRepository: WishlistRepository
 ) : ViewModel() {
+    var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
 
     init {
         viewModelScope.launch {
@@ -160,7 +161,7 @@ class BoardsViewModel @Inject constructor(
     ) {
         if (url.isBlank()) return
         viewModelScope.launch {
-            val metadata = app.wisp.core.common.metadata.LinkMetadataExtractor.extract(url)
+            val metadata = app.wisp.core.common.metadata.LinkMetadataExtractor.extract(url, ioDispatcher)
             val effectiveBoardId = targetBoardId
                 ?: _selectedBoard.value?.id
                 ?: boards.value.firstOrNull()?.id
