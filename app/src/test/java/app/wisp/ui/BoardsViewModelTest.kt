@@ -1,0 +1,186 @@
+package app.wisp.ui
+
+import app.wisp.core.database.model.BoardEntity
+import app.wisp.core.database.model.WishItemEntity
+import app.wisp.core.database.repository.WishlistRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class BoardsViewModelTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    private class FakeWishlistRepository : WishlistRepository {
+        val boardsList = mutableListOf<BoardEntity>()
+        val itemsList = mutableListOf<WishItemEntity>()
+
+        val boardsFlow = MutableStateFlow<List<BoardEntity>>(emptyList())
+        val itemsFlow = MutableStateFlow<List<WishItemEntity>>(emptyList())
+        val priceDropsFlow = MutableStateFlow<List<WishItemEntity>>(emptyList())
+
+        override val allBoards: Flow<List<BoardEntity>> = boardsFlow
+        override val allItems: Flow<List<WishItemEntity>> = itemsFlow
+        override val priceDrops: Flow<List<WishItemEntity>> = priceDropsFlow
+
+        override fun getItemsForBoard(boardId: String): Flow<List<WishItemEntity>> =
+            flowOf(itemsList.filter { it.boardId == boardId })
+
+        override fun getItemCountForBoard(boardId: String): Flow<Int> =
+            flowOf(itemsList.count { it.boardId == boardId })
+
+        override suspend fun getBoard(id: String): BoardEntity? =
+            boardsList.find { it.id == id }
+
+        override suspend fun saveBoard(board: BoardEntity) {
+            boardsList.removeAll { it.id == board.id }
+            boardsList.add(board)
+            boardsFlow.value = boardsList.toList()
+        }
+
+        override suspend fun deleteBoard(id: String) {
+            boardsList.removeAll { it.id == id }
+            boardsFlow.value = boardsList.toList()
+        }
+
+        override suspend fun getItem(id: String): WishItemEntity? =
+            itemsList.find { it.id == id }
+
+        override suspend fun saveItem(item: WishItemEntity) {
+            itemsList.removeAll { it.id == item.id }
+            itemsList.add(item)
+            itemsFlow.value = itemsList.toList()
+        }
+
+        override suspend fun deleteItem(id: String) {
+            itemsList.removeAll { it.id == id }
+            itemsFlow.value = itemsList.toList()
+        }
+
+        override suspend fun updateItemStatus(id: String, status: String) {
+            val item = itemsList.find { it.id == id }
+            if (item != null) {
+                saveItem(item.copy(status = status))
+            }
+        }
+
+        override suspend fun seedInitialDataIfEmpty() {
+            if (boardsList.isEmpty()) {
+                val seedBoard = BoardEntity(
+                    id = "test_board",
+                    name = "Tech Setup",
+                    icon = "💻"
+                )
+                saveBoard(seedBoard)
+            }
+        }
+    }
+
+    private lateinit var fakeRepo: FakeWishlistRepository
+    private lateinit var viewModel: BoardsViewModel
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        fakeRepo = FakeWishlistRepository()
+        viewModel = BoardsViewModel(fakeRepo)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun testSeedingTriggeredOnViewModelInit() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        assertEquals(1, fakeRepo.boardsList.size)
+        assertEquals("Tech Setup", fakeRepo.boardsList.first().name)
+    }
+
+    @Test
+    fun testSelectAndClearBoard() {
+        val board = BoardEntity(id = "b1", name = "Travel")
+        assertNull(viewModel.selectedBoard.value)
+
+        viewModel.openBoard(board)
+        assertEquals("b1", viewModel.selectedBoard.value?.id)
+
+        viewModel.closeBoard()
+        assertNull(viewModel.selectedBoard.value)
+    }
+
+    @Test
+    fun testCreateBoardAddsBoardToRepository() = runTest(testDispatcher) {
+        viewModel.createBoard(name = "Books & Comics", icon = "📚")
+        advanceUntilIdle()
+
+        val created = fakeRepo.boardsList.find { it.name == "Books & Comics" }
+        assertNotNull(created)
+        assertEquals("📚", created?.icon)
+    }
+
+    @Test
+    fun testAddWishItemSavesItem() = runTest(testDispatcher) {
+        advanceUntilIdle() // let seed complete
+        val targetBoard = fakeRepo.boardsList.first()
+        viewModel.openBoard(targetBoard)
+
+        viewModel.addWishItem(
+            title = "Kindle Paperwhite",
+            url = "https://amazon.com/dp/123",
+            price = 139.99,
+            boardId = targetBoard.id
+        )
+        advanceUntilIdle()
+
+        val saved = fakeRepo.itemsList.find { it.title == "Kindle Paperwhite" }
+        assertNotNull(saved)
+        assertEquals(targetBoard.id, saved?.boardId)
+        assertEquals(139.99, saved?.price ?: 0.0, 0.001)
+        assertEquals("Amazon", saved?.store)
+    }
+
+    @Test
+    fun testDeleteItemRemovesItem() = runTest(testDispatcher) {
+        val item = WishItemEntity(id = "item_1", boardId = "b1", title = "Desk Mat")
+        fakeRepo.saveItem(item)
+        advanceUntilIdle()
+        assertEquals(1, fakeRepo.itemsList.size)
+
+        viewModel.deleteItem("item_1")
+        advanceUntilIdle()
+        assertTrue(fakeRepo.itemsList.isEmpty())
+    }
+
+    @Test
+    fun testDeleteBoardRemovesBoardAndClearsSelected() = runTest(testDispatcher) {
+        val board = BoardEntity(id = "b_del", name = "To Delete")
+        fakeRepo.saveBoard(board)
+        viewModel.openBoard(board)
+        advanceUntilIdle()
+
+        assertEquals("b_del", viewModel.selectedBoard.value?.id)
+
+        viewModel.deleteBoard("b_del")
+        advanceUntilIdle()
+
+        assertNull(fakeRepo.boardsList.find { it.id == "b_del" })
+        assertNull(viewModel.selectedBoard.value)
+    }
+}

@@ -1,0 +1,141 @@
+package app.wisp.ui
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import app.wisp.core.database.model.BoardEntity
+import app.wisp.core.database.model.WishItemEntity
+import app.wisp.core.database.repository.WishlistRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.util.UUID
+import javax.inject.Inject
+
+@HiltViewModel
+class BoardsViewModel @Inject constructor(
+    private val wishlistRepository: WishlistRepository
+) : ViewModel() {
+
+    init {
+        viewModelScope.launch {
+            wishlistRepository.seedInitialDataIfEmpty()
+        }
+    }
+
+    val boards: StateFlow<List<BoardEntity>> = wishlistRepository.allBoards
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    val allItems: StateFlow<List<WishItemEntity>> = wishlistRepository.allItems
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    val priceDrops: StateFlow<List<WishItemEntity>> = wishlistRepository.priceDrops
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    private val _selectedBoard = MutableStateFlow<BoardEntity?>(null)
+    val selectedBoard: StateFlow<BoardEntity?> = _selectedBoard.asStateFlow()
+
+    private val _isCreateBoardOpen = MutableStateFlow(false)
+    val isCreateBoardOpen: StateFlow<Boolean> = _isCreateBoardOpen.asStateFlow()
+
+    fun openBoard(board: BoardEntity) {
+        _selectedBoard.value = board
+    }
+
+    fun closeBoard() {
+        _selectedBoard.value = null
+    }
+
+    fun setCreateBoardOpen(open: Boolean) {
+        _isCreateBoardOpen.value = open
+    }
+
+    fun createBoard(name: String, icon: String, accentHex: String = "#8B6CFF") {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            val board = BoardEntity(
+                id = UUID.randomUUID().toString(),
+                name = name.trim(),
+                icon = icon.ifBlank { "✨" },
+                accentColorHex = accentHex
+            )
+            wishlistRepository.saveBoard(board)
+            _isCreateBoardOpen.value = false
+        }
+    }
+
+    fun addWishItem(
+        title: String,
+        url: String? = null,
+        price: Double = 0.0,
+        boardId: String? = null
+    ) {
+        if (title.isBlank() && url.isNullOrBlank()) return
+        viewModelScope.launch {
+            val effectiveBoardId = boardId
+                ?: _selectedBoard.value?.id
+                ?: boards.value.firstOrNull()?.id
+                ?: "board_default"
+
+            val displayTitle = if (title.isNotBlank()) {
+                title.trim()
+            } else {
+                url?.substringAfter("://")?.substringBefore("/")?.replace("www.", "") ?: "New Wish"
+            }
+
+            val item = WishItemEntity(
+                id = UUID.randomUUID().toString(),
+                boardId = effectiveBoardId,
+                title = displayTitle,
+                url = url?.trim()?.ifBlank { null },
+                price = price,
+                store = extractStore(url)
+            )
+            wishlistRepository.saveItem(item)
+        }
+    }
+
+    fun deleteItem(id: String) {
+        viewModelScope.launch {
+            wishlistRepository.deleteItem(id)
+        }
+    }
+
+    fun deleteBoard(id: String) {
+        viewModelScope.launch {
+            wishlistRepository.deleteBoard(id)
+            if (_selectedBoard.value?.id == id) {
+                _selectedBoard.value = null
+            }
+        }
+    }
+
+    private fun extractStore(url: String?): String? {
+        if (url.isNullOrBlank()) return null
+        return when {
+            url.contains("amazon", ignoreCase = true) -> "Amazon"
+            url.contains("flipkart", ignoreCase = true) -> "Flipkart"
+            url.contains("myntra", ignoreCase = true) -> "Myntra"
+            url.contains("ajio", ignoreCase = true) -> "Ajio"
+            url.contains("nike", ignoreCase = true) -> "Nike"
+            url.contains("zara", ignoreCase = true) -> "Zara"
+            url.contains("apple", ignoreCase = true) -> "Apple"
+            else -> url.substringAfter("://").substringBefore("/").replace("www.", "")
+        }
+    }
+}
