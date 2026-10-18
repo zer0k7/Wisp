@@ -1,6 +1,7 @@
 package app.wisp.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,9 +16,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,6 +36,7 @@ import app.wisp.core.designsystem.components.WispCard
 import app.wisp.core.designsystem.components.WispChip
 import app.wisp.core.designsystem.components.WispSheet
 import app.wisp.core.designsystem.components.WispTextField
+import app.wisp.core.designsystem.components.springPress
 import app.wisp.core.designsystem.theme.ThemePreset
 import app.wisp.core.designsystem.theme.WispTheme
 
@@ -47,8 +53,10 @@ fun HomeScreen(
     val themeName = WispTheme.spec.name
 
     var textInput by remember { mutableStateOf("") }
+    var buttonTapCount by remember { mutableIntStateOf(0) }
     var isButtonLoading by remember { mutableStateOf(false) }
     var showSheetPreview by remember { mutableStateOf(false) }
+    var showOrbInfo by remember { mutableStateOf(false) }
     var stateMode by remember { mutableStateOf("content") } // "content", "empty", "loading", "error"
 
     Box(
@@ -150,12 +158,12 @@ fun HomeScreen(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
                             Text(
-                                text = "Squircle Glass Card (API 31+)",
+                                text = "Frosted Glass Squircle Card",
                                 style = typography.headlineMedium,
                                 color = colors.text
                             )
                             Text(
-                                text = "RenderEffect blur surface with translucent fallback. All colors and radii are dynamically fed from WispTheme.",
+                                text = "Crisp, readable typography with a translucent frosted surface and high-contrast outline. All colors and radii are dynamically fed from WispTheme.",
                                 style = typography.bodyMedium,
                                 color = colors.textMuted
                             )
@@ -252,7 +260,7 @@ fun HomeScreen(
                 placeholder = "Type item title or paste link..."
             )
 
-            // Gradient Action Button
+            // Gradient Action Button & Loading Toggle
             Text(
                 text = "Spring Action Button",
                 style = typography.titleMedium,
@@ -263,19 +271,43 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(spacing.small)
             ) {
                 WispButton(
-                    text = if (isButtonLoading) "Processing..." else "Gradient Button",
+                    text = if (isButtonLoading) "Processing..." else "Tap Me (Count: $buttonTapCount)",
                     loading = isButtonLoading,
+                    onClick = { buttonTapCount++ },
+                    modifier = Modifier.weight(1.2f)
+                )
+                WispButton(
+                    text = if (isButtonLoading) "Stop Load" else "Simulate Load",
                     onClick = { isButtonLoading = !isButtonLoading },
                     modifier = Modifier.weight(1f)
                 )
-                WispButton(
-                    text = if (showSheetPreview) "Hide Sheet" else "Preview Sheet",
-                    onClick = { showSheetPreview = !showSheetPreview },
-                    modifier = Modifier.weight(1f)
-                )
             }
+            Text(
+                text = if (buttonTapCount == 0) {
+                    "Tap the button to feel tactile haptics and spring physics (damping: 0.75)."
+                } else {
+                    "Success! Tapped $buttonTapCount time(s) with spring animation."
+                },
+                style = typography.bodyMedium,
+                color = if (buttonTapCount > 0) colors.success else colors.textMuted
+            )
 
             // Bottom Sheet Preview
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Squircle Bottom Sheet",
+                    style = typography.titleMedium,
+                    color = colors.text
+                )
+                WispButton(
+                    text = if (showSheetPreview) "Hide Sheet" else "Preview Sheet",
+                    onClick = { showSheetPreview = !showSheetPreview }
+                )
+            }
             if (showSheetPreview) {
                 WispSheet(
                     modifier = Modifier.fillMaxWidth(),
@@ -296,27 +328,54 @@ fun HomeScreen(
                 }
             }
 
+            // Orb Info Banner (toggled by clicking the Orb in bottom right)
+            if (showOrbInfo) {
+                WispCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    glass = true
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                        Text(
+                            text = "Orb Dock Navigation (F2 Preview)",
+                            style = typography.headlineMedium,
+                            color = colors.accentB
+                        )
+                        Text(
+                            text = "This glowing orb is Wisp's primary navigation in the thumb zone. In F2, tapping it fans out Boards, Inbox, Tracker, Search, and You spaces, and dragging snaps it to any screen edge.",
+                            style = typography.bodyMedium,
+                            color = colors.text
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(spacing.extraLarge))
         }
 
-        // Orb Dock Preview Placeholder
+        // Orb Dock Preview Interactive Button
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(spacing.medium)
                 .size(spacing.orbSize)
+                .springPress(onClick = { showOrbInfo = !showOrbInfo })
                 .clip(shapes.pill)
                 .background(WispTheme.brandGradient)
+                .border(
+                    width = spacing.strokeThick,
+                    color = colors.surfaceHigh,
+                    shape = shapes.pill
+                )
                 .semantics {
-                    contentDescription = "Orb Dock Navigation"
+                    contentDescription = "Orb Dock Navigation Preview. Tap for details."
                 },
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(spacing.large)
-                    .clip(shapes.pill)
-                    .background(colors.surface)
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = colors.background,
+                modifier = Modifier.size(spacing.large)
             )
         }
     }

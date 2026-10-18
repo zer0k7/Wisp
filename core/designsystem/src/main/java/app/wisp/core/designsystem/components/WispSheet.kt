@@ -1,8 +1,5 @@
 package app.wisp.core.designsystem.components
 
-import android.graphics.RenderEffect
-import android.graphics.Shader
-import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -17,13 +14,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.dp
 import app.wisp.core.designsystem.theme.WispTheme
 
 /**
- * Reusable bottom sheet container with 20dp top rounded corners and optional glass effect.
+ * Reusable bottom sheet container with 20dp top rounded corners and frosted glass styling.
  */
 @Composable
 fun WispSheet(
@@ -42,23 +36,9 @@ fun WispSheet(
         colors.surfaceHigh
     }
 
-    val glassModifier = if (glass && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        Modifier.graphicsLayer {
-            val blurRadius = 30f
-            renderEffect = RenderEffect.createBlurEffect(
-                blurRadius,
-                blurRadius,
-                Shader.TileMode.CLAMP
-            ).asComposeRenderEffect()
-        }
-    } else {
-        Modifier
-    }
-
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .then(glassModifier)
             .clip(shapes.sheet)
             .background(backgroundColor)
             .border(
