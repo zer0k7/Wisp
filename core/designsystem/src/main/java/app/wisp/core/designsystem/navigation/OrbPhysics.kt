@@ -64,8 +64,8 @@ object OrbPhysics {
         val count = spaces.size
 
         val (startAngle, endAngle) = when (dockEdge) {
-            DockEdge.RIGHT -> -85.0 to -175.0
-            DockEdge.LEFT -> -95.0 to -5.0
+            DockEdge.RIGHT -> -90.0 to -180.0
+            DockEdge.LEFT -> -90.0 to 0.0
         }
 
         val step = if (count > 1) (endAngle - startAngle) / (count - 1) else 0.0
