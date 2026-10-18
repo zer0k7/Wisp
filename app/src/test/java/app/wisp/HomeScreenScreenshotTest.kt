@@ -131,6 +131,23 @@ class HomeScreenScreenshotTest {
     }
 
     @Test
+    fun captureHomeScreen_ItemDetail() {
+        composeTestRule.setContent {
+            WispTheme(themeSpec = ThemeSpec.MidnightInk) {
+                HomeScreen(
+                    boards = sampleBoards,
+                    items = sampleItems,
+                    selectedItem = sampleItems.first(),
+                    currentPreset = ThemeSpec.MidnightInk.preset,
+                    currentSpace = NavSpace.BOARDS,
+                    navStyle = NavStyleType.ORB_DOCK
+                )
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage()
+    }
+
+    @Test
     fun captureHomeScreen_TrackerSpace() {
         composeTestRule.setContent {
             WispTheme(themeSpec = ThemeSpec.MidnightInk) {

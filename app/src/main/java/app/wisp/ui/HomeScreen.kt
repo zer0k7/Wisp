@@ -1,5 +1,7 @@
 package app.wisp.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -40,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -73,6 +76,12 @@ fun HomeScreen(
     onDeleteBoard: (String) -> Unit = {},
     onAddWishItem: (title: String, url: String, price: Double, boardId: String?) -> Unit = { _, _, _, _ -> },
     onDeleteItem: (String) -> Unit = {},
+    selectedItem: WishItemEntity? = null,
+    onOpenItem: (WishItemEntity) -> Unit = {},
+    onCloseItem: () -> Unit = {},
+    onUpdateItemStatus: (itemId: String, status: String) -> Unit = { _, _ -> },
+    onMoveItemToBoard: (itemId: String, targetBoardId: String) -> Unit = { _, _ -> },
+    onUpdateItem: (WishItemEntity) -> Unit = {},
     currentPreset: ThemePreset = ThemePreset.MIDNIGHT_INK,
     onPresetSelected: (ThemePreset) -> Unit = {},
     currentSpace: NavSpace = NavSpace.BOARDS,
@@ -134,55 +143,74 @@ fun HomeScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            when (space) {
-                NavSpace.BOARDS -> {
-                    if (selectedBoard == null) {
-                        RealBoardsGrid(
-                            boards = boards,
-                            items = items,
-                            onOpenBoard = onOpenBoard,
-                            onOpenCreateBoard = { isNewBoardSheetOpen = true }
-                        )
-                    } else {
-                        BoardDetailView(
-                            board = selectedBoard,
-                            items = items.filter { it.boardId == selectedBoard.id },
-                            onBack = onCloseBoard,
-                            onDeleteItem = onDeleteItem,
-                            onDeleteBoard = {
-                                onDeleteBoard(selectedBoard.id)
-                            },
-                            onAddItem = {
-                                selectedTargetBoardId = selectedBoard.id
-                                internalQuickAdd = true
-                            }
-                        )
-                    }
-                }
-                NavSpace.INBOX -> RealInboxSpace(
-                    items = items,
-                    onDeleteItem = onDeleteItem,
-                    onQuickAdd = { internalQuickAdd = true }
-                )
-                NavSpace.TRACKER -> RealTrackerSpace(
-                    priceDrops = priceDrops,
-                    onDeleteItem = onDeleteItem
-                )
-                NavSpace.SEARCH -> RealSearchSpace(
-                    items = items,
-                    onDeleteItem = onDeleteItem
-                )
-                NavSpace.YOU -> RealStudioSettingsSpace(
-                    currentNavStyle = effectiveNavStyle,
-                    onNavStyleSelected = { style ->
-                        internalNavStyle = style
-                        onNavStyleSelected(style)
+            if (selectedItem != null) {
+                WishItemDetailView(
+                    item = selectedItem,
+                    boards = boards,
+                    onBack = onCloseItem,
+                    onStatusChange = { status -> onUpdateItemStatus(selectedItem.id, status) },
+                    onMoveToBoard = { targetId -> onMoveItemToBoard(selectedItem.id, targetId) },
+                    onDelete = {
+                        onDeleteItem(selectedItem.id)
+                        onCloseItem()
                     },
-                    currentPreset = currentPreset,
-                    onPresetSelected = onPresetSelected,
-                    boardsCount = boards.size,
-                    itemsCount = items.size
+                    onUpdate = onUpdateItem
                 )
+            } else {
+                when (space) {
+                    NavSpace.BOARDS -> {
+                        if (selectedBoard == null) {
+                            RealBoardsGrid(
+                                boards = boards,
+                                items = items,
+                                onOpenBoard = onOpenBoard,
+                                onOpenCreateBoard = { isNewBoardSheetOpen = true }
+                            )
+                        } else {
+                            BoardDetailView(
+                                board = selectedBoard,
+                                items = items.filter { it.boardId == selectedBoard.id },
+                                onBack = onCloseBoard,
+                                onOpenItem = onOpenItem,
+                                onDeleteItem = onDeleteItem,
+                                onDeleteBoard = {
+                                    onDeleteBoard(selectedBoard.id)
+                                },
+                                onAddItem = {
+                                    selectedTargetBoardId = selectedBoard.id
+                                    internalQuickAdd = true
+                                }
+                            )
+                        }
+                    }
+                    NavSpace.INBOX -> RealInboxSpace(
+                        items = items,
+                        onOpenItem = onOpenItem,
+                        onDeleteItem = onDeleteItem,
+                        onQuickAdd = { internalQuickAdd = true }
+                    )
+                    NavSpace.TRACKER -> RealTrackerSpace(
+                        priceDrops = priceDrops,
+                        onOpenItem = onOpenItem,
+                        onDeleteItem = onDeleteItem
+                    )
+                    NavSpace.SEARCH -> RealSearchSpace(
+                        items = items,
+                        onOpenItem = onOpenItem,
+                        onDeleteItem = onDeleteItem
+                    )
+                    NavSpace.YOU -> RealStudioSettingsSpace(
+                        currentNavStyle = effectiveNavStyle,
+                        onNavStyleSelected = { style ->
+                            internalNavStyle = style
+                            onNavStyleSelected(style)
+                        },
+                        currentPreset = currentPreset,
+                        onPresetSelected = onPresetSelected,
+                        boardsCount = boards.size,
+                        itemsCount = items.size
+                    )
+                }
             }
 
             // Quick Add Bottom Sheet
@@ -544,6 +572,7 @@ private fun BoardDetailView(
     board: BoardEntity,
     items: List<WishItemEntity>,
     onBack: () -> Unit,
+    onOpenItem: (WishItemEntity) -> Unit,
     onDeleteItem: (String) -> Unit,
     onDeleteBoard: () -> Unit,
     onAddItem: () -> Unit
@@ -648,6 +677,7 @@ private fun BoardDetailView(
             items.forEach { item ->
                 WishItemCard(
                     item = item,
+                    onClick = { onOpenItem(item) },
                     onDelete = { onDeleteItem(item.id) }
                 )
             }
@@ -658,8 +688,391 @@ private fun BoardDetailView(
 }
 
 @Composable
+private fun WishItemDetailView(
+    item: WishItemEntity,
+    boards: List<BoardEntity>,
+    onBack: () -> Unit,
+    onStatusChange: (String) -> Unit,
+    onMoveToBoard: (String) -> Unit,
+    onDelete: () -> Unit,
+    onUpdate: (WishItemEntity) -> Unit
+) {
+    val colors = WispTheme.colors
+    val spacing = WispTheme.spacing
+    val shapes = WispTheme.shapes
+    val typography = WispTheme.typography
+    val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+
+    var isMoveSheetOpen by remember { mutableStateOf(false) }
+    var notesText by remember(item.id) { mutableStateOf(item.notes ?: "") }
+    var isEditingNotes by remember { mutableStateOf(false) }
+
+    val currentBoard = boards.find { it.id == item.boardId }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(spacing.medium)
+    ) {
+        // Top Navigation Bar
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(spacing.small)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(colors.surfaceHigh)
+                        .springPress(onClick = onBack),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = colors.text
+                    )
+                }
+                Column {
+                    Text(
+                        text = currentBoard?.let { "${it.icon} ${it.name}" } ?: "Wish Item",
+                        style = typography.labelSmall,
+                        color = colors.textMuted
+                    )
+                    Text(
+                        text = "Item Details",
+                        style = typography.headlineMedium,
+                        color = colors.text
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(colors.surfaceHigh)
+                    .springPress(onClick = onDelete),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Delete,
+                    contentDescription = "Delete item",
+                    tint = colors.danger
+                )
+            }
+        }
+
+        // Hero Card with Glow & Title
+        WispCard(
+            modifier = Modifier.fillMaxWidth(),
+            glass = true
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.medium)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val storeName = item.store
+                    if (!storeName.isNullOrBlank()) {
+                        WispChip(
+                            label = storeName,
+                            selected = true,
+                            onClick = {}
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.width(spacing.extraSmall))
+                    }
+
+                    val statusColor = when (item.status.lowercase()) {
+                        "bought" -> colors.success
+                        "reserved" -> colors.warning
+                        "gifted" -> colors.hot
+                        else -> colors.accentA
+                    }
+                    Text(
+                        text = item.status.uppercase(),
+                        style = typography.labelSmall,
+                        color = statusColor
+                    )
+                }
+
+                Text(
+                    text = item.title,
+                    style = typography.headlineLarge,
+                    color = colors.text
+                )
+
+                if (item.price > 0) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.small)
+                    ) {
+                        Text(
+                            text = "${item.currency}${item.price.toInt()}",
+                            style = typography.displayLarge,
+                            color = colors.text
+                        )
+
+                        val origPrice = item.originalPrice
+                        if (origPrice != null && origPrice > item.price) {
+                            Text(
+                                text = "${item.currency}${origPrice.toInt()}",
+                                style = typography.bodySmall(colors.textMuted)
+                            )
+                            val savings = origPrice - item.price
+                            Text(
+                                text = "Save ${item.currency}${savings.toInt()}",
+                                style = typography.labelSmall,
+                                color = colors.hot
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Status Control (Wanted, Reserved, Bought, Gifted)
+        WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                Text(
+                    text = "Status",
+                    style = typography.titleMedium,
+                    color = colors.text
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.small)
+                ) {
+                    val statuses = listOf(
+                        "wanted" to "Wanted",
+                        "reserved" to "Reserved",
+                        "bought" to "Bought",
+                        "gifted" to "Gifted"
+                    )
+                    statuses.forEach { (key, label) ->
+                        val isSelected = item.status.equals(key, ignoreCase = true)
+                        WispChip(
+                            label = label,
+                            selected = isSelected,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onStatusChange(key)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Move to Board
+        WispCard(
+            modifier = Modifier.fillMaxWidth(),
+            glass = true
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Current Board",
+                        style = typography.labelSmall,
+                        color = colors.textMuted
+                    )
+                    Text(
+                        text = currentBoard?.let { "${it.icon} ${it.name}" } ?: "Unassigned",
+                        style = typography.titleMedium,
+                        color = colors.text
+                    )
+                }
+                WispButton(
+                    text = "Move Board",
+                    onClick = { isMoveSheetOpen = true }
+                )
+            }
+        }
+
+        // Product Link
+        val itemUrl = item.url
+        if (!itemUrl.isNullOrBlank()) {
+            WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Product Link",
+                            style = typography.labelSmall,
+                            color = colors.textMuted
+                        )
+                        Text(
+                            text = itemUrl,
+                            style = typography.bodyMedium,
+                            color = colors.accentA,
+                            maxLines = 1
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(spacing.small))
+                    WispButton(
+                        text = "Visit",
+                        onClick = {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(itemUrl))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {}
+                        }
+                    )
+                }
+            }
+        }
+
+        // Notes & Details
+        WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Notes & Reminders",
+                        style = typography.titleMedium,
+                        color = colors.text
+                    )
+                    if (!isEditingNotes) {
+                        WispChip(
+                            label = if (notesText.isBlank()) "+ Add Note" else "Edit",
+                            selected = false,
+                            onClick = { isEditingNotes = true }
+                        )
+                    }
+                }
+
+                if (isEditingNotes) {
+                    WispTextField(
+                        value = notesText,
+                        onValueChange = { notesText = it },
+                        placeholder = "e.g. Size M, wait for Black Friday sale..."
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        WispButton(
+                            text = "Save Note",
+                            onClick = {
+                                onUpdate(item.copy(notes = notesText.trim()))
+                                isEditingNotes = false
+                            }
+                        )
+                    }
+                } else if (notesText.isNotBlank()) {
+                    Text(
+                        text = notesText,
+                        style = typography.bodyMedium,
+                        color = colors.textMuted
+                    )
+                } else {
+                    Text(
+                        text = "No notes added yet.",
+                        style = typography.bodyMedium,
+                        color = colors.textMuted.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(spacing.extraLarge))
+    }
+
+    // Move to Board Sheet
+    if (isMoveSheetOpen) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            WispSheet(
+                modifier = Modifier.fillMaxWidth(),
+                glass = true,
+                showHandle = true
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(spacing.medium),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Move to Board",
+                        style = typography.headlineMedium,
+                        color = colors.text
+                    )
+                    Text(
+                        text = "Select a destination board for this item:",
+                        style = typography.bodyMedium,
+                        color = colors.textMuted
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                        boards.forEach { board ->
+                            val isCurrent = board.id == item.boardId
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(shapes.card)
+                                    .background(if (isCurrent) colors.accentA.copy(alpha = 0.2f) else colors.surfaceHigh)
+                                    .springPress(onClick = {
+                                        onMoveToBoard(board.id)
+                                        isMoveSheetOpen = false
+                                    })
+                                    .padding(spacing.medium)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${board.icon} ${board.name}",
+                                        style = typography.titleMedium,
+                                        color = if (isCurrent) colors.accentA else colors.text
+                                    )
+                                    if (isCurrent) {
+                                        Text(
+                                            text = "Current",
+                                            style = typography.labelSmall,
+                                            color = colors.accentA
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    WispButton(
+                        text = "Close",
+                        onClick = { isMoveSheetOpen = false },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun WishItemCard(
     item: WishItemEntity,
+    onClick: () -> Unit = {},
     onDelete: () -> Unit
 ) {
     val colors = WispTheme.colors
@@ -667,7 +1080,9 @@ private fun WishItemCard(
     val typography = WispTheme.typography
 
     WispCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .springPress(onClick = onClick),
         glass = true
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
@@ -677,11 +1092,30 @@ private fun WishItemCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = item.title,
-                        style = typography.titleMedium,
-                        color = colors.text
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall)
+                    ) {
+                        Text(
+                            text = item.title,
+                            style = typography.titleMedium,
+                            color = colors.text,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (!item.status.equals("wanted", ignoreCase = true)) {
+                            val statusColor = when (item.status.lowercase()) {
+                                "bought" -> colors.success
+                                "reserved" -> colors.warning
+                                "gifted" -> colors.hot
+                                else -> colors.accentA
+                            }
+                            Text(
+                                text = "· ${item.status}",
+                                style = typography.labelSmall,
+                                color = statusColor
+                            )
+                        }
+                    }
                     val storeName = item.store
                     if (!storeName.isNullOrBlank()) {
                         Text(
@@ -760,6 +1194,7 @@ private fun app.wisp.core.designsystem.theme.WispTypography.bodySmall(color: Col
 @Composable
 private fun RealInboxSpace(
     items: List<WishItemEntity>,
+    onOpenItem: (WishItemEntity) -> Unit,
     onDeleteItem: (String) -> Unit,
     onQuickAdd: () -> Unit
 ) {
@@ -801,7 +1236,11 @@ private fun RealInboxSpace(
             }
         } else {
             items.forEach { item ->
-                WishItemCard(item = item, onDelete = { onDeleteItem(item.id) })
+                WishItemCard(
+                    item = item,
+                    onClick = { onOpenItem(item) },
+                    onDelete = { onDeleteItem(item.id) }
+                )
             }
         }
 
@@ -812,6 +1251,7 @@ private fun RealInboxSpace(
 @Composable
 private fun RealTrackerSpace(
     priceDrops: List<WishItemEntity>,
+    onOpenItem: (WishItemEntity) -> Unit,
     onDeleteItem: (String) -> Unit
 ) {
     val colors = WispTheme.colors
@@ -861,7 +1301,12 @@ private fun RealTrackerSpace(
         } else {
             priceDrops.forEach { item ->
                 val dropAmount = (item.originalPrice ?: 0.0) - item.price
-                WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
+                WispCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .springPress(onClick = { onOpenItem(item) }),
+                    glass = true
+                ) {
                     Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -896,6 +1341,7 @@ private fun RealTrackerSpace(
 @Composable
 private fun RealSearchSpace(
     items: List<WishItemEntity>,
+    onOpenItem: (WishItemEntity) -> Unit,
     onDeleteItem: (String) -> Unit
 ) {
     val colors = WispTheme.colors
@@ -944,7 +1390,11 @@ private fun RealSearchSpace(
         )
 
         filtered.forEach { item ->
-            WishItemCard(item = item, onDelete = { onDeleteItem(item.id) })
+            WishItemCard(
+                item = item,
+                onClick = { onOpenItem(item) },
+                onDelete = { onDeleteItem(item.id) }
+            )
         }
 
         Spacer(modifier = Modifier.height(spacing.extraLarge))

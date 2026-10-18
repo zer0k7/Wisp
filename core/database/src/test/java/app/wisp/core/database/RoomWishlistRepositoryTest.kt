@@ -118,4 +118,23 @@ class RoomWishlistRepositoryTest {
         assertEquals(1, drops.size)
         assertEquals("sale_item", drops[0].id)
     }
+
+    @Test
+    fun testUpdateItemStatusAndMoveBoard() = runTest(testDispatcher) {
+        val item = WishItemEntity(
+            id = "item_move",
+            boardId = "b1",
+            title = "Travel Backpack",
+            status = "wanted"
+        )
+        repository.saveItem(item)
+
+        repository.updateItemStatus("item_move", "bought")
+        val updated = repository.getItem("item_move")
+        assertEquals("bought", updated?.status)
+
+        repository.moveItemToBoard("item_move", "b2")
+        val moved = repository.getItem("item_move")
+        assertEquals("b2", moved?.boardId)
+    }
 }

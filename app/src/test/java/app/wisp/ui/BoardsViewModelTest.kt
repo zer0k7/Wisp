@@ -79,6 +79,13 @@ class BoardsViewModelTest {
             }
         }
 
+        override suspend fun moveItemToBoard(itemId: String, targetBoardId: String) {
+            val item = itemsList.find { it.id == itemId }
+            if (item != null) {
+                saveItem(item.copy(boardId = targetBoardId))
+            }
+        }
+
         override suspend fun seedInitialDataIfEmpty() {
             if (boardsList.isEmpty()) {
                 val seedBoard = BoardEntity(
@@ -182,5 +189,71 @@ class BoardsViewModelTest {
 
         assertNull(fakeRepo.boardsList.find { it.id == "b_del" })
         assertNull(viewModel.selectedBoard.value)
+    }
+
+    @Test
+    fun testOpenAndCloseItem() {
+        val item = WishItemEntity(id = "item_1", boardId = "b1", title = "Keyboard")
+        assertNull(viewModel.selectedItem.value)
+
+        viewModel.openItem(item)
+        assertEquals("item_1", viewModel.selectedItem.value?.id)
+
+        viewModel.closeItem()
+        assertNull(viewModel.selectedItem.value)
+    }
+
+    @Test
+    fun testUpdateItemStatus() = runTest(testDispatcher) {
+        val item = WishItemEntity(id = "item_1", boardId = "b1", title = "Backpack", status = "wanted")
+        fakeRepo.saveItem(item)
+        viewModel.openItem(item)
+
+        viewModel.updateItemStatus("item_1", "bought")
+        advanceUntilIdle()
+
+        assertEquals("bought", viewModel.selectedItem.value?.status)
+        val repoItem = fakeRepo.itemsList.find { it.id == "item_1" }
+        assertEquals("bought", repoItem?.status)
+    }
+
+    @Test
+    fun testMoveItemToBoard() = runTest(testDispatcher) {
+        val item = WishItemEntity(id = "item_1", boardId = "b1", title = "Sneakers")
+        fakeRepo.saveItem(item)
+        viewModel.openItem(item)
+
+        viewModel.moveItemToBoard("item_1", "b2")
+        advanceUntilIdle()
+
+        assertEquals("b2", viewModel.selectedItem.value?.boardId)
+        val repoItem = fakeRepo.itemsList.find { it.id == "item_1" }
+        assertEquals("b2", repoItem?.boardId)
+    }
+
+    @Test
+    fun testUpdateWishItem() = runTest(testDispatcher) {
+        val item = WishItemEntity(id = "item_1", boardId = "b1", title = "Initial Title")
+        fakeRepo.saveItem(item)
+        viewModel.openItem(item)
+
+        val updated = item.copy(title = "Updated Title", price = 99.9)
+        viewModel.updateWishItem(updated)
+        advanceUntilIdle()
+
+        assertEquals("Updated Title", viewModel.selectedItem.value?.title)
+        assertEquals(99.9, viewModel.selectedItem.value?.price ?: 0.0, 0.001)
+    }
+
+    @Test
+    fun testDeleteItemClearsSelectedItem() = runTest(testDispatcher) {
+        val item = WishItemEntity(id = "item_del", boardId = "b1", title = "To Delete")
+        fakeRepo.saveItem(item)
+        viewModel.openItem(item)
+
+        viewModel.deleteItem("item_del")
+        advanceUntilIdle()
+
+        assertNull(viewModel.selectedItem.value)
     }
 }

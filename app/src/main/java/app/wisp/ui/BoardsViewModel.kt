@@ -50,6 +50,9 @@ class BoardsViewModel @Inject constructor(
     private val _selectedBoard = MutableStateFlow<BoardEntity?>(null)
     val selectedBoard: StateFlow<BoardEntity?> = _selectedBoard.asStateFlow()
 
+    private val _selectedItem = MutableStateFlow<WishItemEntity?>(null)
+    val selectedItem: StateFlow<WishItemEntity?> = _selectedItem.asStateFlow()
+
     private val _isCreateBoardOpen = MutableStateFlow(false)
     val isCreateBoardOpen: StateFlow<Boolean> = _isCreateBoardOpen.asStateFlow()
 
@@ -59,6 +62,41 @@ class BoardsViewModel @Inject constructor(
 
     fun closeBoard() {
         _selectedBoard.value = null
+    }
+
+    fun openItem(item: WishItemEntity) {
+        _selectedItem.value = item
+    }
+
+    fun closeItem() {
+        _selectedItem.value = null
+    }
+
+    fun updateItemStatus(itemId: String, status: String) {
+        viewModelScope.launch {
+            wishlistRepository.updateItemStatus(itemId, status)
+            if (_selectedItem.value?.id == itemId) {
+                _selectedItem.value = _selectedItem.value?.copy(status = status)
+            }
+        }
+    }
+
+    fun moveItemToBoard(itemId: String, targetBoardId: String) {
+        viewModelScope.launch {
+            wishlistRepository.moveItemToBoard(itemId, targetBoardId)
+            if (_selectedItem.value?.id == itemId) {
+                _selectedItem.value = _selectedItem.value?.copy(boardId = targetBoardId)
+            }
+        }
+    }
+
+    fun updateWishItem(item: WishItemEntity) {
+        viewModelScope.launch {
+            wishlistRepository.saveItem(item)
+            if (_selectedItem.value?.id == item.id) {
+                _selectedItem.value = item
+            }
+        }
     }
 
     fun setCreateBoardOpen(open: Boolean) {
@@ -113,6 +151,9 @@ class BoardsViewModel @Inject constructor(
     fun deleteItem(id: String) {
         viewModelScope.launch {
             wishlistRepository.deleteItem(id)
+            if (_selectedItem.value?.id == id) {
+                _selectedItem.value = null
+            }
         }
     }
 
