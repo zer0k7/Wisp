@@ -2,6 +2,7 @@ package app.wisp
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.wisp.core.designsystem.theme.ThemeSpec
 import app.wisp.core.designsystem.theme.WispTheme
@@ -29,6 +30,6 @@ class HomeScreenScreenshotTest {
                 HomeScreen()
             }
         }
-        captureRoboImage("build/outputs/roborazzi/hello_world_midnight_ink.png")
+        composeTestRule.onRoot().captureRoboImage("build/outputs/roborazzi/hello_world_midnight_ink.png")
     }
 }
