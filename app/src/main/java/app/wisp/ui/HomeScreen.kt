@@ -682,9 +682,10 @@ private fun WishItemCard(
                         style = typography.titleMedium,
                         color = colors.text
                     )
-                    if (!item.store.isNullOrBlank()) {
+                    val storeName = item.store
+                    if (!storeName.isNullOrBlank()) {
                         Text(
-                            text = item.store,
+                            text = storeName,
                             style = typography.labelSmall,
                             color = colors.accentB
                         )
@@ -719,9 +720,10 @@ private fun WishItemCard(
                             style = typography.headlineMedium,
                             color = colors.text
                         )
-                        if (item.originalPrice != null && item.originalPrice > item.price) {
+                        val origPrice = item.originalPrice
+                        if (origPrice != null && origPrice > item.price) {
                             Text(
-                                text = "${item.currency}${item.originalPrice.toInt()}",
+                                text = "${item.currency}${origPrice.toInt()}",
                                 style = typography.bodySmall(colors.textMuted)
                             )
                         }
