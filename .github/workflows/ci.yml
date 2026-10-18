@@ -42,7 +42,7 @@ jobs:
       - name: Assemble Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Upload Debug APK
+      - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
@@ -50,14 +50,16 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Publish Debug APK to GitHub Release
-        if: success() && github.ref == 'refs/heads/main'
+      - name: Publish Test APK to GitHub Pre-release
+        if: success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete "v0.1.0-debug" --yes --repo ${{ github.repository }} || true
-          gh release create "v0.1.0-debug" app/build/outputs/apk/debug/app-debug.apk \
-            --title "Wisp Debug Build #${{ github.run_number }}" \
-            --notes "Automated debug APK build from CI run ${{ github.run_number }}." \
+          cp app/build/outputs/apk/debug/app-debug.apk wisp-debug-${{ github.run_number }}.apk
+          gh release delete "test-apk" --yes --repo ${{ github.repository }} || true
+          git push --delete origin "test-apk" 2>/dev/null || true
+          gh release create "test-apk" wisp-debug-${{ github.run_number }}.apk \
+            --title "Wisp Test APK (Build #${{ github.run_number }})" \
+            --notes "Automated testing pre-release APK built by GitHub Actions CI from branch \`${{ github.ref_name }}\` (commit \`${{ github.sha }}\`)." \
             --prerelease \
-            --repo ${{ github.repository }} || true
+            --repo ${{ github.repository }}
