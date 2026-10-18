@@ -282,7 +282,7 @@ class BoardsViewModelTest {
         val defaultBoardId = fakeRepo.boardsList.first().id
 
         var capturedResult: WishItemEntity? = null
-        viewModel.captureUrl("https://example.com/product") {
+        viewModel.captureUrl(url = "https://example.com/product", targetBoardId = defaultBoardId) {
             capturedResult = it
         }
         advanceUntilIdle()
