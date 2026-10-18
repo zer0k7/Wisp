@@ -41,4 +41,12 @@ object DataStoreModule {
     ): ThemePreferencesRepository {
         return DataStoreThemePreferencesRepository(dataStore)
     }
+
+    @Provides
+    @Singleton
+    fun provideNavigationPreferencesRepository(
+        dataStore: DataStore<Preferences>
+    ): app.wisp.core.datastore.NavigationPreferencesRepository {
+        return app.wisp.core.datastore.DataStoreNavigationPreferencesRepository(dataStore)
+    }
 }

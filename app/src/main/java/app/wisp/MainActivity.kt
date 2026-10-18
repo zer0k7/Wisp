@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.wisp.core.designsystem.theme.WispTheme
 import app.wisp.ui.HomeScreen
+import app.wisp.ui.NavigationViewModel
 import app.wisp.ui.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -19,12 +20,17 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val themeViewModel: ThemeViewModel by viewModels()
+    private val navigationViewModel: NavigationViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             val themeSpec by themeViewModel.themeSpec.collectAsStateWithLifecycle()
+            val currentSpace by navigationViewModel.currentSpace.collectAsStateWithLifecycle()
+            val navStyle by navigationViewModel.navStyle.collectAsStateWithLifecycle()
+            val orbPosition by navigationViewModel.orbPositionRatio.collectAsStateWithLifecycle()
+            val quickAddTriggered by navigationViewModel.quickAddTriggered.collectAsStateWithLifecycle()
 
             WispTheme(themeSpec = themeSpec) {
                 Surface(
@@ -33,7 +39,19 @@ class MainActivity : ComponentActivity() {
                 ) {
                     HomeScreen(
                         currentPreset = themeSpec.preset,
-                        onPresetSelected = { preset -> themeViewModel.selectPreset(preset) }
+                        onPresetSelected = { preset -> themeViewModel.selectPreset(preset) },
+                        currentSpace = currentSpace,
+                        onSpaceSelected = { space -> navigationViewModel.selectSpace(space) },
+                        navStyle = navStyle,
+                        onNavStyleSelected = { style -> navigationViewModel.setNavStyle(style) },
+                        initialXRatio = orbPosition.first,
+                        initialYRatio = orbPosition.second,
+                        onOrbPositionChanged = { xRatio, yRatio ->
+                            navigationViewModel.setOrbPositionRatio(xRatio, yRatio)
+                        },
+                        quickAddTriggered = quickAddTriggered,
+                        onDismissQuickAdd = { navigationViewModel.consumeQuickAdd() },
+                        onTriggerQuickAdd = { navigationViewModel.triggerQuickAdd() }
                     )
                 }
             }
