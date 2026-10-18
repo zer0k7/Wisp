@@ -260,7 +260,7 @@ private fun BoardsSpaceContent(
         ) {
             ThemePreset.entries.forEach { preset ->
                 WispChip(
-                    text = preset.displayName,
+                    label = preset.displayName,
                     selected = currentPreset == preset,
                     onClick = { onPresetSelected(preset) }
                 )
@@ -504,7 +504,7 @@ private fun SearchSpaceContent() {
         ) {
             listOf("All", "Price Drops", "Reserved", "Tech", "Fashion", "Priority 5").forEach { tag ->
                 WispChip(
-                    text = tag,
+                    label = tag,
                     selected = tag == "All",
                     onClick = {}
                 )
@@ -550,7 +550,7 @@ private fun YouSpaceContent(
             Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
                 Text(
                     text = "Navigation Style",
-                    style = typography.titleLarge,
+                    style = typography.headlineLarge,
                     color = colors.accentB
                 )
                 Text(
@@ -564,7 +564,7 @@ private fun YouSpaceContent(
                 ) {
                     NavStyleType.entries.forEach { style ->
                         WispChip(
-                            text = style.displayName,
+                            label = style.displayName,
                             selected = style == currentNavStyle,
                             onClick = { onNavStyleSelected(style) }
                         )
@@ -581,7 +581,7 @@ private fun YouSpaceContent(
             Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
                 Text(
                     text = "WispTheme Presets",
-                    style = typography.titleLarge,
+                    style = typography.headlineLarge,
                     color = colors.accentA
                 )
                 Row(
@@ -592,7 +592,7 @@ private fun YouSpaceContent(
                 ) {
                     ThemePreset.entries.forEach { preset ->
                         WispChip(
-                            text = preset.displayName,
+                            label = preset.displayName,
                             selected = currentPreset == preset,
                             onClick = { onPresetSelected(preset) }
                         )

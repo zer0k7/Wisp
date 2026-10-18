@@ -76,14 +76,18 @@ fun OrbFanItem(
             },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        val bgModifier = if (isSelected) {
+            Modifier.background(WispTheme.brandGradient)
+        } else {
+            Modifier.background(colors.surfaceHigh.copy(alpha = 0.90f))
+        }
+
         Box(
             modifier = Modifier
                 .size(itemSize)
                 .springPress(onClick = onClick)
                 .clip(CircleShape)
-                .background(
-                    if (isSelected) WispTheme.brandGradient else colors.surfaceHigh.copy(alpha = 0.90f)
-                )
+                .then(bgModifier)
                 .border(
                     width = if (isSelected) spacing.strokeThick else spacing.stroke,
                     color = if (isSelected) colors.accentB else colors.outline,

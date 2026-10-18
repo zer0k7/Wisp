@@ -119,7 +119,7 @@ fun WispCommandBar(
                     ) {
                         Text(
                             text = "Command Bar",
-                            style = typography.titleLarge,
+                            style = typography.headlineLarge,
                             color = colors.text
                         )
                         Box(
@@ -211,7 +211,7 @@ fun WispCommandBar(
                     ) {
                         NavSpace.spaces.forEach { space ->
                             WispChip(
-                                text = space.title,
+                                label = space.title,
                                 selected = false,
                                 onClick = {
                                     onDismiss()
@@ -244,7 +244,7 @@ fun WispCommandBar(
                     ) {
                         NavStyleType.entries.forEach { style ->
                             WispChip(
-                                text = style.displayName,
+                                label = style.displayName,
                                 selected = style == currentNavStyle,
                                 onClick = {
                                     onNavStyleSelected(style)
@@ -282,7 +282,7 @@ fun WispCommandBar(
                             ThemePreset.OCEAN
                         ).forEach { preset ->
                             WispChip(
-                                text = preset.displayName,
+                                label = preset.displayName,
                                 selected = false,
                                 onClick = {
                                     onThemePresetSelected(preset)

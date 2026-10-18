@@ -94,11 +94,16 @@ fun FloatingPillNav(
                 ) {
                     NavSpace.spaces.forEach { space ->
                         val isSelected = space == currentSpace
+                        val bgModifier = if (isSelected) {
+                            Modifier.background(WispTheme.brandGradient)
+                        } else {
+                            Modifier.background(Color.Transparent)
+                        }
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(if (isSelected) WispTheme.brandGradient else Color.Transparent)
+                                .then(bgModifier)
                                 .springPress(onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     onSpaceSelected(space)
