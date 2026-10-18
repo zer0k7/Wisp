@@ -1267,7 +1267,7 @@ private fun RealInboxSpace(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Save link from clipboard?",
-                                style = typography.titleSmall,
+                                style = typography.titleMedium,
                                 color = colors.text
                             )
                             Text(

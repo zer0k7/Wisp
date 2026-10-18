@@ -144,11 +144,13 @@ fun ShareTargetContent(
             if (metadata.title.isNotBlank()) {
                 title = metadata.title
             }
-            if (metadata.price != null && metadata.price > 0) {
-                priceText = metadata.price.toInt().toString()
+            val metaPrice = metadata.price
+            if (metaPrice != null && metaPrice > 0) {
+                priceText = metaPrice.toInt().toString()
             }
-            if (!metadata.store.isNullOrBlank()) {
-                storeName = metadata.store
+            val metaStore = metadata.store
+            if (!metaStore.isNullOrBlank()) {
+                storeName = metaStore
             }
             isFetchingMetadata = false
         }
