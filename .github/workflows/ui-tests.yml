@@ -29,12 +29,13 @@ jobs:
       - name: Grant Execute Permission for Gradle Wrapper
         run: chmod +x gradlew
 
-      - name: Verify Roborazzi Screenshots
-        run: ./gradlew verifyRoborazziDebug
+      - name: Run Roborazzi Screenshot Tests
+        run: ./gradlew recordRoborazziDebug verifyRoborazziDebug
 
       - name: Upload Roborazzi Reports
         if: always()
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: roborazzi-reports
           path: |

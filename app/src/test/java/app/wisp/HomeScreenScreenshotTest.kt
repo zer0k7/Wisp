@@ -30,6 +30,6 @@ class HomeScreenScreenshotTest {
                 HomeScreen()
             }
         }
-        composeTestRule.onRoot().captureRoboImage("build/outputs/roborazzi/hello_world_midnight_ink.png")
+        composeTestRule.onRoot().captureRoboImage()
     }
 }
