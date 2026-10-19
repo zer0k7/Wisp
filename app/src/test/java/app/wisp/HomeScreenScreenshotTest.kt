@@ -114,13 +114,82 @@ class HomeScreenScreenshotTest {
     }
 
     @Test
-    fun captureHomeScreen_BoardDetail() {
+    fun captureHomeScreen_BoardDetail_Grid() {
         composeTestRule.setContent {
             WispTheme(themeSpec = ThemeSpec.MidnightInk) {
                 HomeScreen(
                     boards = sampleBoards,
                     items = sampleItems,
-                    selectedBoard = sampleBoards.first(),
+                    selectedBoard = sampleBoards.first().copy(viewType = "grid", gridColumns = 2),
+                    currentPreset = ThemeSpec.MidnightInk.preset,
+                    currentSpace = NavSpace.BOARDS,
+                    navStyle = NavStyleType.ORB_DOCK
+                )
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun captureHomeScreen_BoardDetail_Canvas() {
+        composeTestRule.setContent {
+            WispTheme(themeSpec = ThemeSpec.MidnightInk) {
+                HomeScreen(
+                    boards = sampleBoards,
+                    items = sampleItems,
+                    selectedBoard = sampleBoards.first().copy(viewType = "canvas"),
+                    currentPreset = ThemeSpec.MidnightInk.preset,
+                    currentSpace = NavSpace.BOARDS,
+                    navStyle = NavStyleType.ORB_DOCK
+                )
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun captureHomeScreen_BoardDetail_List() {
+        composeTestRule.setContent {
+            WispTheme(themeSpec = ThemeSpec.MidnightInk) {
+                HomeScreen(
+                    boards = sampleBoards,
+                    items = sampleItems,
+                    selectedBoard = sampleBoards.first().copy(viewType = "list"),
+                    currentPreset = ThemeSpec.MidnightInk.preset,
+                    currentSpace = NavSpace.BOARDS,
+                    navStyle = NavStyleType.ORB_DOCK
+                )
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun captureHomeScreen_BoardDetail_Deck() {
+        composeTestRule.setContent {
+            WispTheme(themeSpec = ThemeSpec.MidnightInk) {
+                HomeScreen(
+                    boards = sampleBoards,
+                    items = sampleItems,
+                    selectedBoard = sampleBoards.first().copy(viewType = "deck"),
+                    currentPreset = ThemeSpec.MidnightInk.preset,
+                    currentSpace = NavSpace.BOARDS,
+                    navStyle = NavStyleType.ORB_DOCK
+                )
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun captureHomeScreen_BoardDetail_MultiSelect() {
+        composeTestRule.setContent {
+            WispTheme(themeSpec = ThemeSpec.MidnightInk) {
+                HomeScreen(
+                    boards = sampleBoards,
+                    items = sampleItems,
+                    selectedBoard = sampleBoards.first().copy(viewType = "grid", gridColumns = 2),
+                    selectedItemIds = setOf("item_headphones", "item_keyboard"),
                     currentPreset = ThemeSpec.MidnightInk.preset,
                     currentSpace = NavSpace.BOARDS,
                     navStyle = NavStyleType.ORB_DOCK

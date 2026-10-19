@@ -25,6 +25,10 @@ interface WishlistRepository {
     suspend fun updateItemStatus(id: String, status: String)
     suspend fun moveItemToBoard(itemId: String, targetBoardId: String)
     suspend fun findItemByUrl(url: String): WishItemEntity?
+    suspend fun updateBoardView(id: String, viewType: String, columns: Int)
+    suspend fun updateItemCanvasTransform(id: String, x: Float, y: Float, scale: Float, rotation: Float)
+    suspend fun deleteItems(ids: List<String>)
+    suspend fun moveItemsToBoard(ids: List<String>, targetBoardId: String)
 
     suspend fun seedInitialDataIfEmpty()
 }
@@ -76,6 +80,22 @@ class RoomWishlistRepository(
 
     override suspend fun findItemByUrl(url: String): WishItemEntity? =
         wishItemDao.getItemByUrl(url)
+
+    override suspend fun updateBoardView(id: String, viewType: String, columns: Int) {
+        boardDao.updateBoardView(id, viewType, columns)
+    }
+
+    override suspend fun updateItemCanvasTransform(id: String, x: Float, y: Float, scale: Float, rotation: Float) {
+        wishItemDao.updateItemCanvasTransform(id, x, y, scale, rotation)
+    }
+
+    override suspend fun deleteItems(ids: List<String>) {
+        wishItemDao.deleteItemsByIds(ids)
+    }
+
+    override suspend fun moveItemsToBoard(ids: List<String>, targetBoardId: String) {
+        wishItemDao.moveItemsToBoard(ids, targetBoardId)
+    }
 
     override suspend fun seedInitialDataIfEmpty() {
         val currentBoards = boardDao.getAllBoards().first()

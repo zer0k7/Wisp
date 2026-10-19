@@ -155,4 +155,48 @@ class RoomWishlistRepositoryTest {
         val notFound = repository.findItemByUrl("https://nonexistent.com")
         assertNull(notFound)
     }
+
+    @Test
+    fun testUpdateBoardViewAndColumns() = runTest(testDispatcher) {
+        val board = BoardEntity(id = "b_view", name = "Fashion", viewType = "grid", gridColumns = 2)
+        repository.saveBoard(board)
+
+        repository.updateBoardView("b_view", "canvas", 3)
+        val updated = repository.getBoard("b_view")
+        assertEquals("canvas", updated?.viewType)
+        assertEquals(3, updated?.gridColumns)
+    }
+
+    @Test
+    fun testUpdateCanvasTransform() = runTest(testDispatcher) {
+        val item = WishItemEntity(id = "item_canvas", boardId = "b1", title = "Poster")
+        repository.saveItem(item)
+
+        repository.updateItemCanvasTransform("item_canvas", 120f, 240f, 1.5f, 15f)
+        val updated = repository.getItem("item_canvas")
+        assertEquals(120f, updated?.canvasX ?: 0f, 0.01f)
+        assertEquals(240f, updated?.canvasY ?: 0f, 0.01f)
+        assertEquals(1.5f, updated?.canvasScale ?: 0f, 0.01f)
+        assertEquals(15f, updated?.canvasRotation ?: 0f, 0.01f)
+    }
+
+    @Test
+    fun testBatchDeleteAndBatchMove() = runTest(testDispatcher) {
+        val i1 = WishItemEntity(id = "batch_1", boardId = "b1", title = "Item 1")
+        val i2 = WishItemEntity(id = "batch_2", boardId = "b1", title = "Item 2")
+        val i3 = WishItemEntity(id = "batch_3", boardId = "b1", title = "Item 3")
+        repository.saveItem(i1)
+        repository.saveItem(i2)
+        repository.saveItem(i3)
+
+        repository.moveItemsToBoard(listOf("batch_1", "batch_2"), "b2")
+        assertEquals("b2", repository.getItem("batch_1")?.boardId)
+        assertEquals("b2", repository.getItem("batch_2")?.boardId)
+        assertEquals("b1", repository.getItem("batch_3")?.boardId)
+
+        repository.deleteItems(listOf("batch_1", "batch_3"))
+        assertNull(repository.getItem("batch_1"))
+        assertNotNull(repository.getItem("batch_2"))
+        assertNull(repository.getItem("batch_3"))
+    }
 }

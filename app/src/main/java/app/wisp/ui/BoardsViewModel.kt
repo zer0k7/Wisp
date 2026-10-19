@@ -54,15 +54,84 @@ class BoardsViewModel @Inject constructor(
     private val _selectedItem = MutableStateFlow<WishItemEntity?>(null)
     val selectedItem: StateFlow<WishItemEntity?> = _selectedItem.asStateFlow()
 
+    private val _selectedItemIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedItemIds: StateFlow<Set<String>> = _selectedItemIds.asStateFlow()
+
     private val _isCreateBoardOpen = MutableStateFlow(false)
     val isCreateBoardOpen: StateFlow<Boolean> = _isCreateBoardOpen.asStateFlow()
 
     fun openBoard(board: BoardEntity) {
         _selectedBoard.value = board
+        _selectedItemIds.value = emptySet()
     }
 
     fun closeBoard() {
         _selectedBoard.value = null
+        _selectedItemIds.value = emptySet()
+    }
+
+    fun toggleSelectItem(itemId: String) {
+        val current = _selectedItemIds.value
+        _selectedItemIds.value = if (current.contains(itemId)) {
+            current - itemId
+        } else {
+            current + itemId
+        }
+    }
+
+    fun clearSelection() {
+        _selectedItemIds.value = emptySet()
+    }
+
+    fun selectAllItems(ids: List<String>) {
+        _selectedItemIds.value = ids.toSet()
+    }
+
+    fun deleteSelectedItems() {
+        val ids = _selectedItemIds.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            wishlistRepository.deleteItems(ids)
+            _selectedItemIds.value = emptySet()
+            if (ids.contains(_selectedItem.value?.id)) {
+                _selectedItem.value = null
+            }
+        }
+    }
+
+    fun moveSelectedItems(targetBoardId: String) {
+        val ids = _selectedItemIds.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            wishlistRepository.moveItemsToBoard(ids, targetBoardId)
+            _selectedItemIds.value = emptySet()
+        }
+    }
+
+    fun updateBoardView(boardId: String, viewType: String, gridColumns: Int = 2) {
+        viewModelScope.launch {
+            wishlistRepository.updateBoardView(boardId, viewType, gridColumns)
+            if (_selectedBoard.value?.id == boardId) {
+                _selectedBoard.value = _selectedBoard.value?.copy(
+                    viewType = viewType,
+                    gridColumns = gridColumns
+                )
+            }
+        }
+    }
+
+    fun updateItemCanvas(itemId: String, x: Float, y: Float, scale: Float, rotation: Float) {
+        viewModelScope.launch {
+            wishlistRepository.updateItemCanvasTransform(itemId, x, y, scale, rotation)
+            if (_selectedItem.value?.id == itemId) {
+                _selectedItem.value = _selectedItem.value?.copy(
+                    canvasX = x,
+                    canvasY = y,
+                    canvasScale = scale,
+                    canvasRotation = rotation
+                )
+            }
+        }
     }
 
     fun openItem(item: WishItemEntity) {
