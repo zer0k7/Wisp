@@ -440,7 +440,7 @@ fun BoardDetailView(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(spacing.small)
                             ) {
-                                Text(text = targetBoard.icon, style = typography.titleLarge)
+                                Text(text = targetBoard.icon, style = typography.headlineMedium)
                                 Text(
                                     text = targetBoard.name,
                                     style = typography.titleMedium,
@@ -494,7 +494,7 @@ fun MasonryGridView(
                     .background(colors.surface)
                     .border(
                         width = if (isSelected) 2.dp else 1.dp,
-                        color = if (isSelected) colors.accentA else colors.glassBorder,
+                        color = if (isSelected) colors.accentA else colors.outline,
                         shape = WispTheme.shapes.card
                     )
                     .clickable {
@@ -521,7 +521,11 @@ fun MasonryGridView(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(if (columns == 1) 80.dp else 60.dp)
-                                .background(WispTheme.brandGradient.copy(alpha = 0.2f)),
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(colors.accentA.copy(alpha = 0.2f), colors.accentB.copy(alpha = 0.2f))
+                                    )
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -615,8 +619,8 @@ fun CanvasMoodboardView(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(WispTheme.shapes.card)
-                .background(colors.backgroundElevated)
-                .border(1.dp, colors.glassBorder, WispTheme.shapes.card)
+                .background(colors.surfaceHigh)
+                .border(1.dp, colors.outline, WispTheme.shapes.card)
         ) {
             items.forEachIndexed { index, item ->
                 // Initial placement fallback if not yet set on canvas
@@ -636,7 +640,7 @@ fun CanvasMoodboardView(
                         .size(120.dp, 140.dp)
                         .clip(WispTheme.shapes.card)
                         .background(colors.surface)
-                        .border(1.dp, colors.glassBorder, WispTheme.shapes.card)
+                        .border(1.dp, colors.outline, WispTheme.shapes.card)
                         .pointerInput(item.id) {
                             detectTransformGestures { _, pan, zoom, rotateDeg ->
                                 offsetX += pan.x
@@ -706,7 +710,7 @@ fun CanvasMoodboardView(
                 .padding(spacing.small)
                 .clip(WispTheme.shapes.pill)
                 .background(colors.surface.copy(alpha = 0.85f))
-                .border(1.dp, colors.glassBorder, WispTheme.shapes.pill)
+                .border(1.dp, colors.outline, WispTheme.shapes.pill)
                 .padding(horizontal = spacing.medium, vertical = spacing.extraSmall)
         ) {
             Row(
@@ -965,7 +969,7 @@ fun CardDeckView(
                         .scale(0.96f)
                         .clip(WispTheme.shapes.card)
                         .background(colors.surfaceHigh.copy(alpha = 0.6f))
-                        .border(1.dp, colors.glassBorder, WispTheme.shapes.card)
+                        .border(1.dp, colors.outline, WispTheme.shapes.card)
                 )
             }
 
@@ -978,7 +982,7 @@ fun CardDeckView(
                     .rotate(dragOffsetX * 0.04f)
                     .clip(WispTheme.shapes.card)
                     .background(colors.surface)
-                    .border(1.dp, colors.glassBorder, WispTheme.shapes.card)
+                    .border(1.dp, colors.outline, WispTheme.shapes.card)
                     .pointerInput(currentIndex) {
                         detectDragGestures(
                             onDragEnd = {
@@ -1014,7 +1018,11 @@ fun CardDeckView(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
-                                .background(WispTheme.brandGradient.copy(alpha = 0.25f)),
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(colors.accentA.copy(alpha = 0.25f), colors.accentB.copy(alpha = 0.25f))
+                                    )
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -1050,9 +1058,10 @@ fun CardDeckView(
                                     color = colors.accentB
                                 )
                             }
-                            if (!currentItem.store.isNullOrBlank()) {
+                            val currentStore = currentItem.store
+                            if (!currentStore.isNullOrBlank()) {
                                 Text(
-                                    text = currentItem.store,
+                                    text = currentStore,
                                     style = typography.labelSmall,
                                     color = colors.textMuted
                                 )
