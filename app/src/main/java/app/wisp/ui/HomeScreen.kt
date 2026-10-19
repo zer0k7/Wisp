@@ -58,6 +58,7 @@ import app.wisp.core.designsystem.components.WispButton
 import app.wisp.core.designsystem.components.WispCard
 import app.wisp.core.designsystem.components.WispChip
 import app.wisp.core.designsystem.components.WispSheet
+import app.wisp.ui.board.BoardDetailView
 import app.wisp.core.designsystem.components.WispTextField
 import app.wisp.core.designsystem.components.springPress
 import app.wisp.core.designsystem.navigation.NavSpace
@@ -97,7 +98,15 @@ fun HomeScreen(
     onOrbPositionChanged: ((Float, Float) -> Unit)? = null,
     quickAddTriggered: Boolean = false,
     onDismissQuickAdd: () -> Unit = {},
-    onTriggerQuickAdd: () -> Unit = {}
+    onTriggerQuickAdd: () -> Unit = {},
+    selectedItemIds: Set<String> = emptySet(),
+    onToggleSelectItem: (String) -> Unit = {},
+    onClearSelection: () -> Unit = {},
+    onSelectAllItems: (List<String>) -> Unit = {},
+    onDeleteSelectedItems: () -> Unit = {},
+    onMoveSelectedItems: (String) -> Unit = {},
+    onUpdateBoardView: (boardId: String, viewType: String, columns: Int) -> Unit = { _, _, _ -> },
+    onUpdateItemCanvas: (itemId: String, x: Float, y: Float, scale: Float, rotation: Float) -> Unit = { _, _, _, _, _ -> }
 ) {
     val colors = WispTheme.colors
     val spacing = WispTheme.spacing
@@ -174,6 +183,7 @@ fun HomeScreen(
                             BoardDetailView(
                                 board = selectedBoard,
                                 items = items.filter { it.boardId == selectedBoard.id },
+                                allBoards = boards,
                                 onBack = onCloseBoard,
                                 onOpenItem = onOpenItem,
                                 onDeleteItem = onDeleteItem,
@@ -183,7 +193,17 @@ fun HomeScreen(
                                 onAddItem = {
                                     selectedTargetBoardId = selectedBoard.id
                                     internalQuickAdd = true
-                                }
+                                },
+                                onUpdateBoardView = { viewType, cols ->
+                                    onUpdateBoardView(selectedBoard.id, viewType, cols)
+                                },
+                                selectedItemIds = selectedItemIds,
+                                onToggleSelectItem = onToggleSelectItem,
+                                onClearSelection = onClearSelection,
+                                onSelectAllItems = onSelectAllItems,
+                                onDeleteSelectedItems = onDeleteSelectedItems,
+                                onMoveSelectedItems = onMoveSelectedItems,
+                                onUpdateItemCanvas = onUpdateItemCanvas
                             )
                         }
                     }
@@ -569,126 +589,6 @@ private fun DashedNewBoardCard(
                 color = colors.accentB
             )
         }
-    }
-}
-
-@Composable
-private fun BoardDetailView(
-    board: BoardEntity,
-    items: List<WishItemEntity>,
-    onBack: () -> Unit,
-    onOpenItem: (WishItemEntity) -> Unit,
-    onDeleteItem: (String) -> Unit,
-    onDeleteBoard: () -> Unit,
-    onAddItem: () -> Unit
-) {
-    val colors = WispTheme.colors
-    val spacing = WispTheme.spacing
-    val typography = WispTheme.typography
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(spacing.medium),
-        verticalArrangement = Arrangement.spacedBy(spacing.medium)
-    ) {
-        // Top Bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(spacing.small)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(colors.surfaceHigh)
-                        .springPress(onClick = onBack),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back to boards",
-                        tint = colors.text
-                    )
-                }
-                Column {
-                    Text(
-                        text = "${board.icon} ${board.name}",
-                        style = typography.headlineLarge,
-                        color = colors.text
-                    )
-                    Text(
-                        text = "${items.size} saved items",
-                        style = typography.labelSmall,
-                        color = colors.textMuted
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(colors.surfaceHigh)
-                    .springPress(onClick = onDeleteBoard),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Delete,
-                    contentDescription = "Delete board",
-                    tint = colors.danger,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-
-        // Add item button inside board
-        WispButton(
-            text = "+ Add Wish to ${board.name}",
-            onClick = onAddItem,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Items List
-        if (items.isEmpty()) {
-            WispCard(
-                modifier = Modifier.fillMaxWidth(),
-                glass = true
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(spacing.small)
-                ) {
-                    Text(
-                        text = "No Items in this Board",
-                        style = typography.titleMedium,
-                        color = colors.text
-                    )
-                    Text(
-                        text = "Tap '+ Add Wish' or use the floating Orb to save items here.",
-                        style = typography.bodyMedium,
-                        color = colors.textMuted
-                    )
-                }
-            }
-        } else {
-            items.forEach { item ->
-                WishItemCard(
-                    item = item,
-                    onClick = { onOpenItem(item) },
-                    onDelete = { onDeleteItem(item.id) }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(spacing.extraLarge))
     }
 }
 

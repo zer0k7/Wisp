@@ -92,6 +92,32 @@ class BoardsViewModelTest {
         override suspend fun findItemByUrl(url: String): WishItemEntity? =
             itemsList.find { it.url == url }
 
+        override suspend fun updateBoardView(id: String, viewType: String, columns: Int) {
+            val board = boardsList.find { it.id == id }
+            if (board != null) {
+                saveBoard(board.copy(viewType = viewType, gridColumns = columns))
+            }
+        }
+
+        override suspend fun updateItemCanvasTransform(id: String, x: Float, y: Float, scale: Float, rotation: Float) {
+            val item = itemsList.find { it.id == id }
+            if (item != null) {
+                saveItem(item.copy(canvasX = x, canvasY = y, canvasScale = scale, canvasRotation = rotation))
+            }
+        }
+
+        override suspend fun deleteItems(ids: List<String>) {
+            itemsList.removeAll { it.id in ids }
+            itemsFlow.value = itemsList.toList()
+        }
+
+        override suspend fun moveItemsToBoard(ids: List<String>, targetBoardId: String) {
+            val updated = itemsList.map { if (it.id in ids) it.copy(boardId = targetBoardId) else it }
+            itemsList.clear()
+            itemsList.addAll(updated)
+            itemsFlow.value = itemsList.toList()
+        }
+
         override suspend fun seedInitialDataIfEmpty() {
             if (boardsList.isEmpty()) {
                 val seedBoard = BoardEntity(
@@ -290,5 +316,85 @@ class BoardsViewModelTest {
         val savedItem = fakeRepo.itemsList.find { it.url?.contains("example.com") == true }
         assertNotNull(savedItem)
         assertEquals(defaultBoardId, savedItem?.boardId)
+    }
+
+    @Test
+    fun testToggleAndClearMultiSelection() {
+        assertEquals(emptySet<String>(), viewModel.selectedItemIds.value)
+
+        viewModel.toggleSelectItem("item_1")
+        assertEquals(setOf("item_1"), viewModel.selectedItemIds.value)
+
+        viewModel.toggleSelectItem("item_2")
+        assertEquals(setOf("item_1", "item_2"), viewModel.selectedItemIds.value)
+
+        viewModel.toggleSelectItem("item_1")
+        assertEquals(setOf("item_2"), viewModel.selectedItemIds.value)
+
+        viewModel.selectAllItems(listOf("item_1", "item_2", "item_3"))
+        assertEquals(setOf("item_1", "item_2", "item_3"), viewModel.selectedItemIds.value)
+
+        viewModel.clearSelection()
+        assertEquals(emptySet<String>(), viewModel.selectedItemIds.value)
+    }
+
+    @Test
+    fun testDeleteSelectedItems() = runTest(testDispatcher) {
+        val i1 = WishItemEntity(id = "i1", boardId = "b1", title = "A")
+        val i2 = WishItemEntity(id = "i2", boardId = "b1", title = "B")
+        fakeRepo.saveItem(i1)
+        fakeRepo.saveItem(i2)
+
+        viewModel.toggleSelectItem("i1")
+        viewModel.deleteSelectedItems()
+        advanceUntilIdle()
+
+        assertEquals(emptySet<String>(), viewModel.selectedItemIds.value)
+        assertNull(fakeRepo.getItem("i1"))
+        assertNotNull(fakeRepo.getItem("i2"))
+    }
+
+    @Test
+    fun testMoveSelectedItems() = runTest(testDispatcher) {
+        val i1 = WishItemEntity(id = "i1", boardId = "b1", title = "A")
+        val i2 = WishItemEntity(id = "i2", boardId = "b1", title = "B")
+        fakeRepo.saveItem(i1)
+        fakeRepo.saveItem(i2)
+
+        viewModel.selectAllItems(listOf("i1", "i2"))
+        viewModel.moveSelectedItems("b2")
+        advanceUntilIdle()
+
+        assertEquals(emptySet<String>(), viewModel.selectedItemIds.value)
+        assertEquals("b2", fakeRepo.getItem("i1")?.boardId)
+        assertEquals("b2", fakeRepo.getItem("i2")?.boardId)
+    }
+
+    @Test
+    fun testUpdateBoardView() = runTest(testDispatcher) {
+        val board = BoardEntity(id = "b1", name = "Test", viewType = "grid", gridColumns = 2)
+        fakeRepo.saveBoard(board)
+        viewModel.openBoard(board)
+
+        viewModel.updateBoardView("b1", "canvas", 3)
+        advanceUntilIdle()
+
+        assertEquals("canvas", viewModel.selectedBoard.value?.viewType)
+        assertEquals(3, viewModel.selectedBoard.value?.gridColumns)
+    }
+
+    @Test
+    fun testUpdateItemCanvas() = runTest(testDispatcher) {
+        val item = WishItemEntity(id = "i1", boardId = "b1", title = "Art")
+        fakeRepo.saveItem(item)
+        viewModel.openItem(item)
+
+        viewModel.updateItemCanvas("i1", 100f, 200f, 1.2f, 45f)
+        advanceUntilIdle()
+
+        assertEquals(100f, viewModel.selectedItem.value?.canvasX ?: 0f, 0.01f)
+        assertEquals(200f, viewModel.selectedItem.value?.canvasY ?: 0f, 0.01f)
+        assertEquals(1.2f, viewModel.selectedItem.value?.canvasScale ?: 0f, 0.01f)
+        assertEquals(45f, viewModel.selectedItem.value?.canvasRotation ?: 0f, 0.01f)
     }
 }

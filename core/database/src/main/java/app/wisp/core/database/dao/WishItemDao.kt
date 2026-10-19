@@ -53,4 +53,13 @@ interface WishItemDao {
 
     @Query("UPDATE wish_items SET boardId = :targetBoardId WHERE id = :itemId")
     suspend fun moveItemToBoard(itemId: String, targetBoardId: String)
+
+    @Query("DELETE FROM wish_items WHERE id IN (:ids)")
+    suspend fun deleteItemsByIds(ids: List<String>)
+
+    @Query("UPDATE wish_items SET boardId = :targetBoardId WHERE id IN (:ids)")
+    suspend fun moveItemsToBoard(ids: List<String>, targetBoardId: String)
+
+    @Query("UPDATE wish_items SET canvasX = :x, canvasY = :y, canvasScale = :scale, canvasRotation = :rotation WHERE id = :id")
+    suspend fun updateItemCanvasTransform(id: String, x: Float, y: Float, scale: Float, rotation: Float)
 }

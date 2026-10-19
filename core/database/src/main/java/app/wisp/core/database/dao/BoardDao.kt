@@ -32,4 +32,7 @@ interface BoardDao {
 
     @Query("DELETE FROM boards WHERE id = :id")
     suspend fun deleteBoardById(id: String)
+
+    @Query("UPDATE boards SET viewType = :viewType, gridColumns = :columns WHERE id = :id")
+    suspend fun updateBoardView(id: String, viewType: String, columns: Int)
 }

@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
             val priceDrops by boardsViewModel.priceDrops.collectAsStateWithLifecycle()
             val selectedBoard by boardsViewModel.selectedBoard.collectAsStateWithLifecycle()
             val selectedItem by boardsViewModel.selectedItem.collectAsStateWithLifecycle()
+            val selectedItemIds by boardsViewModel.selectedItemIds.collectAsStateWithLifecycle()
 
             WispTheme(themeSpec = themeSpec) {
                 Surface(
@@ -82,7 +83,19 @@ class MainActivity : ComponentActivity() {
                         },
                         quickAddTriggered = quickAddTriggered,
                         onDismissQuickAdd = { navigationViewModel.consumeQuickAdd() },
-                        onTriggerQuickAdd = { navigationViewModel.triggerQuickAdd() }
+                        onTriggerQuickAdd = { navigationViewModel.triggerQuickAdd() },
+                        selectedItemIds = selectedItemIds,
+                        onToggleSelectItem = { id -> boardsViewModel.toggleSelectItem(id) },
+                        onClearSelection = { boardsViewModel.clearSelection() },
+                        onSelectAllItems = { ids -> boardsViewModel.selectAllItems(ids) },
+                        onDeleteSelectedItems = { boardsViewModel.deleteSelectedItems() },
+                        onMoveSelectedItems = { targetId -> boardsViewModel.moveSelectedItems(targetId) },
+                        onUpdateBoardView = { boardId, viewType, cols ->
+                            boardsViewModel.updateBoardView(boardId, viewType, cols)
+                        },
+                        onUpdateItemCanvas = { id, x, y, s, r ->
+                            boardsViewModel.updateItemCanvas(id, x, y, s, r)
+                        }
                     )
                 }
             }

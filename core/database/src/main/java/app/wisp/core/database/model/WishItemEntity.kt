@@ -25,5 +25,9 @@ data class WishItemEntity(
     val status: String = "wanted", // wanted, reserved, bought, gifted
     val variants: String? = null,
     val dominantColorHex: String? = null,
+    val canvasX: Float = 0f,
+    val canvasY: Float = 0f,
+    val canvasScale: Float = 1f,
+    val canvasRotation: Float = 0f,
     val createdAt: Long = System.currentTimeMillis()
 )

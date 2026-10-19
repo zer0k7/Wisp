@@ -13,5 +13,7 @@ data class BoardEntity(
     val accentColorHex: String = "#8B6CFF",
     val isPrivate: Boolean = false,
     val sortOrder: Int = 0,
+    val viewType: String = "grid", // grid, canvas, list, deck
+    val gridColumns: Int = 2, // 1 to 4
     val createdAt: Long = System.currentTimeMillis()
 )
