@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +47,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.wisp.core.designsystem.theme.WispTheme
+import app.wisp.core.designsystem.components.springPress
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -106,7 +108,7 @@ fun OrbDock(
                     true
                 }
             }
-            val quickAddAction = CustomAccessibilityAction(label = "Quick Add item") {
+            val quickAddAction = CustomAccessibilityAction(label = "Add item") {
                 onQuickAdd()
                 true
             }
@@ -135,6 +137,28 @@ fun OrbDock(
                     isFanOpen = false
                 }
             )
+
+            if (isFanOpen && !isDragging) {
+                Box(
+                    modifier = Modifier
+                        .offset(y = -spacing.extraLarge)
+                        .clip(WispTheme.shapes.pill)
+                        .background(colors.surfaceHigh)
+                        .border(spacing.stroke, colors.outline, WispTheme.shapes.pill)
+                        .springPress(onClick = {
+                            isFanOpen = false
+                            onQuickAdd()
+                        })
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = "Add item"
+                        }
+                        .padding(horizontal = spacing.small, vertical = spacing.extraSmall),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Add item", style = WispTheme.typography.labelSmall, color = colors.text)
+                }
+            }
 
             // Outer Soft Glow Aura Canvas
             Canvas(
@@ -165,8 +189,8 @@ fun OrbDock(
                     )
                     .semantics {
                         role = Role.Button
-                        contentDescription = "Wisp Orb Dock. Current space: ${currentSpace.title}. " +
-                            "Tap to fan out spaces, long press for Quick Add."
+                        contentDescription = "Navigation button. Current section: ${currentSpace.title}. " +
+                            "Tap to open sections, long press to add an item."
                         this.customActions = accessibilityActions
                     }
                     .pointerInput(screenWidthPx, screenHeightPx, orbSizePx) {

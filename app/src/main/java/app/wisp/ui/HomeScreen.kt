@@ -116,11 +116,12 @@ fun HomeScreen(
     var quickAddTitle by remember { mutableStateOf("") }
     var quickAddUrl by remember { mutableStateOf("") }
     var quickAddPrice by remember { mutableStateOf("") }
+    var quickAddError by remember { mutableStateOf<String?>(null) }
     var selectedTargetBoardId by remember { mutableStateOf(boards.firstOrNull()?.id ?: "") }
 
     var isNewBoardSheetOpen by remember { mutableStateOf(false) }
     var newBoardName by remember { mutableStateOf("") }
-    var newBoardIcon by remember { mutableStateOf("✨") }
+    var newBoardIcon by remember { mutableStateOf("folder") }
 
     var internalSelectedSpace by remember { mutableStateOf(currentSpace) }
     var internalNavStyle by remember { mutableStateOf(navStyle) }
@@ -254,25 +255,28 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = "Quick Add to Wishlist",
+                                text = "Add item",
                                 style = typography.headlineMedium,
                                 color = colors.text
                             )
                             WispTextField(
                                 value = quickAddTitle,
-                                onValueChange = { quickAddTitle = it },
+                                onValueChange = { quickAddTitle = it; quickAddError = null },
                                 placeholder = "Item name (e.g. Wireless Headphones)..."
                             )
                             WispTextField(
                                 value = quickAddUrl,
-                                onValueChange = { quickAddUrl = it },
+                                onValueChange = { quickAddUrl = it; quickAddError = null },
                                 placeholder = "Paste link (Amazon, Flipkart, etc.)..."
                             )
                             WispTextField(
                                 value = quickAddPrice,
-                                onValueChange = { quickAddPrice = it },
+                                onValueChange = { quickAddPrice = it; quickAddError = null },
                                 placeholder = "Price (e.g. 2499)..."
                             )
+                            quickAddError?.let { error ->
+                                Text(text = error, style = typography.labelSmall, color = colors.danger)
+                            }
 
                             // Select Board Chips
                             if (boards.isNotEmpty()) {
@@ -290,7 +294,7 @@ fun HomeScreen(
                                     val currentBoardChoice = selectedTargetBoardId.ifBlank { boards.first().id }
                                     boards.forEach { b ->
                                         WispChip(
-                                            label = "${b.icon} ${b.name}",
+                                            label = b.name,
                                             selected = b.id == currentBoardChoice,
                                             onClick = { selectedTargetBoardId = b.id }
                                         )
@@ -312,16 +316,24 @@ fun HomeScreen(
                                 Spacer(modifier = Modifier.width(spacing.small))
                                 WispButton(
                                     text = "Save Item",
+                                    enabled = quickAddTitle.isNotBlank() || quickAddUrl.isNotBlank(),
                                     onClick = {
-                                        val priceVal = quickAddPrice.toDoubleOrNull() ?: 0.0
-                                        val targetBoard = selectedTargetBoardId.ifBlank { boards.firstOrNull()?.id }
-                                        onAddWishItem(quickAddTitle, quickAddUrl, priceVal, targetBoard)
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        quickAddTitle = ""
-                                        quickAddUrl = ""
-                                        quickAddPrice = ""
-                                        internalQuickAdd = false
-                                        onDismissQuickAdd()
+                                        if (quickAddTitle.isBlank() && quickAddUrl.isBlank()) {
+                                            quickAddError = "Add a name or paste a link first."
+                                        } else if (quickAddPrice.isNotBlank() && quickAddPrice.toDoubleOrNull() == null) {
+                                            quickAddError = "Enter a valid price or leave it empty."
+                                        } else {
+                                            val priceVal = quickAddPrice.toDoubleOrNull() ?: 0.0
+                                            val targetBoard = selectedTargetBoardId.ifBlank { boards.firstOrNull()?.id }
+                                            onAddWishItem(quickAddTitle, quickAddUrl, priceVal, targetBoard)
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            quickAddTitle = ""
+                                            quickAddUrl = ""
+                                            quickAddPrice = ""
+                                            quickAddError = null
+                                            internalQuickAdd = false
+                                            onDismissQuickAdd()
+                                        }
                                     }
                                 )
                             }
@@ -357,7 +369,7 @@ fun HomeScreen(
                             )
 
                             Text(
-                                text = "Choose Icon:",
+                                text = "Choose an icon",
                                 style = typography.labelLarge,
                                 color = colors.textMuted
                             )
@@ -365,11 +377,11 @@ fun HomeScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(spacing.small)
                             ) {
-                                listOf("✨", "💻", "👟", "🎁", "📚", "🏠", "✈️").forEach { icon ->
+                                boardIconOptions.forEach { (key, _) ->
                                     WispChip(
-                                        label = icon,
-                                        selected = newBoardIcon == icon,
-                                        onClick = { newBoardIcon = icon }
+                                        label = key.replaceFirstChar { it.uppercase() },
+                                        selected = newBoardIcon == key,
+                                        onClick = { newBoardIcon = key }
                                     )
                                 }
                             }
@@ -488,9 +500,10 @@ private fun RealBoardsGrid(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = board.icon,
-                                    style = typography.headlineLarge
+                                BoardIcon(
+                                    key = board.icon,
+                                    contentDescription = "${board.name} icon",
+                                    modifier = Modifier.size(spacing.extraLarge)
                                 )
                                 Text(
                                     text = "${boardItems.size} items",
@@ -648,7 +661,7 @@ private fun WishItemDetailView(
                 }
                 Column {
                     Text(
-                        text = currentBoard?.let { "${it.icon} ${it.name}" } ?: "Wish Item",
+                        text = currentBoard?.name ?: "Wish Item",
                         style = typography.labelSmall,
                         color = colors.textMuted
                     )
@@ -796,7 +809,7 @@ private fun WishItemDetailView(
                         color = colors.textMuted
                     )
                     Text(
-                        text = currentBoard?.let { "${it.icon} ${it.name}" } ?: "Unassigned",
+                        text = currentBoard?.name ?: "Unassigned",
                         style = typography.titleMedium,
                         color = colors.text
                     )
@@ -947,11 +960,18 @@ private fun WishItemDetailView(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = "${board.icon} ${board.name}",
-                                        style = typography.titleMedium,
-                                        color = if (isCurrent) colors.accentA else colors.text
-                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.small), verticalAlignment = Alignment.CenterVertically) {
+                                        BoardIcon(
+                                            key = board.icon,
+                                            contentDescription = "${board.name} icon",
+                                            modifier = Modifier.size(spacing.large)
+                                        )
+                                        Text(
+                                            text = board.name,
+                                            style = typography.titleMedium,
+                                            color = if (isCurrent) colors.accentA else colors.text
+                                        )
+                                    }
                                     if (isCurrent) {
                                         Text(
                                             text = "Current",
@@ -1211,7 +1231,7 @@ private fun RealInboxSpace(
         }
 
         WispButton(
-            text = "+ Quick Add Wish",
+            text = "Add item",
             onClick = onQuickAdd,
             modifier = Modifier.fillMaxWidth()
         )
@@ -1219,7 +1239,7 @@ private fun RealInboxSpace(
         if (items.isEmpty()) {
             WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
                 Text(
-                    text = "Inbox is empty! Tap the + button to save your first link.",
+                    text = "Nothing saved yet. Add an item with a name or link.",
                     style = typography.bodyMedium,
                     color = colors.textMuted
                 )
@@ -1267,7 +1287,7 @@ private fun RealTrackerSpace(
                     color = colors.text
                 )
                 Text(
-                    text = "Real-time drops on your saved wishes",
+                    text = "Price changes for saved items",
                     style = typography.bodyMedium,
                     color = colors.textMuted
                 )
@@ -1412,7 +1432,7 @@ private fun RealStudioSettingsSpace(
         verticalArrangement = Arrangement.spacedBy(spacing.medium)
     ) {
         Text(
-            text = "Studio & Settings",
+            text = "Settings",
             style = typography.displayLarge,
             color = colors.text
         )
@@ -1479,13 +1499,13 @@ private fun RealStudioSettingsSpace(
                         modifier = Modifier.size(spacing.large)
                     )
                     Text(
-                        text = "100% Offline & Private Room DB",
+                        text = "Stored only on this device",
                         style = typography.titleMedium,
                         color = colors.success
                     )
                 }
                 Text(
-                    text = "Database holds $boardsCount boards and $itemsCount wishes on this device. 0 analytics, 0 trackers.",
+                    text = "$boardsCount boards and $itemsCount saved items are stored on this device.",
                     style = typography.bodyMedium,
                     color = colors.textMuted
                 )

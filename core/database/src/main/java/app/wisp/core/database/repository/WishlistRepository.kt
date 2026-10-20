@@ -104,21 +104,21 @@ class RoomWishlistRepository(
                 BoardEntity(
                     id = "board_tech",
                     name = "Tech Setup",
-                    icon = "💻",
+                    icon = "devices",
                     accentColorHex = "#8B6CFF",
                     sortOrder = 0
                 ),
                 BoardEntity(
                     id = "board_wardrobe",
                     name = "Wardrobe & Style",
-                    icon = "👟",
+                    icon = "style",
                     accentColorHex = "#22E5C4",
                     sortOrder = 1
                 ),
                 BoardEntity(
                     id = "board_gifts",
                     name = "Gift Ideas",
-                    icon = "🎁",
+                    icon = "gifts",
                     accentColorHex = "#FF5C8A",
                     sortOrder = 2
                 )

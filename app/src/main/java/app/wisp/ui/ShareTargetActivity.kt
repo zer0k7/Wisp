@@ -283,7 +283,7 @@ fun ShareTargetContent(
                     ) {
                         boards.take(4).forEach { board ->
                             WispChip(
-                                label = "${board.icon} ${board.name}",
+                                label = board.name,
                                 selected = selectedBoardId == board.id,
                                 onClick = { selectedBoardId = board.id }
                             )

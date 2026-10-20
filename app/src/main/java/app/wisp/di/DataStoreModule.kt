@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import app.wisp.core.datastore.DataStoreThemePreferencesRepository
+import app.wisp.core.datastore.DataStoreOnboardingPreferencesRepository
+import app.wisp.core.datastore.OnboardingPreferencesRepository
 import app.wisp.core.datastore.ThemePreferencesRepository
 import dagger.Module
 import dagger.Provides
@@ -49,4 +51,10 @@ object DataStoreModule {
     ): app.wisp.core.datastore.NavigationPreferencesRepository {
         return app.wisp.core.datastore.DataStoreNavigationPreferencesRepository(dataStore)
     }
+
+    @Provides
+    @Singleton
+    fun provideOnboardingPreferencesRepository(
+        dataStore: DataStore<Preferences>
+    ): OnboardingPreferencesRepository = DataStoreOnboardingPreferencesRepository(dataStore)
 }
