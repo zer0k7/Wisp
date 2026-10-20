@@ -179,7 +179,7 @@ class BoardsViewModel @Inject constructor(
             val board = BoardEntity(
                 id = UUID.randomUUID().toString(),
                 name = name.trim(),
-                icon = icon.ifBlank { "✨" },
+                icon = icon.ifBlank { "folder" },
                 accentColorHex = accentHex
             )
             wishlistRepository.saveBoard(board)

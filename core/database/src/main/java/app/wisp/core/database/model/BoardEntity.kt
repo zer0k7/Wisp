@@ -8,7 +8,7 @@ data class BoardEntity(
     @PrimaryKey
     val id: String,
     val name: String,
-    val icon: String = "✨",
+    val icon: String = "folder",
     val coverStyle: String = "mosaic", // mosaic, single, color
     val accentColorHex: String = "#8B6CFF",
     val isPrivate: Boolean = false,

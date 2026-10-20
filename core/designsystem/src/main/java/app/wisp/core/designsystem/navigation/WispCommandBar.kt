@@ -118,7 +118,7 @@ fun WispCommandBar(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Command Bar",
+                            text = "Menu",
                             style = typography.headlineLarge,
                             color = colors.text
                         )
@@ -186,7 +186,7 @@ fun WispCommandBar(
                             }
                             Column {
                                 Text(
-                                    text = "Quick Add Wishlist Item",
+                                    text = "Add item",
                                     style = typography.titleMedium,
                                     color = colors.text
                                 )
@@ -199,9 +199,9 @@ fun WispCommandBar(
                         }
                     }
 
-                    // Jump to Spaces
+                    // Go to a section
                     Text(
-                        text = "Jump to Space",
+                        text = "Go to",
                         style = typography.labelLarge,
                         color = colors.accentB
                     )
@@ -265,7 +265,7 @@ fun WispCommandBar(
                             modifier = Modifier.size(spacing.medium)
                         )
                         Text(
-                            text = "Quick Theme Switch",
+                            text = "Theme",
                             style = typography.labelLarge,
                             color = colors.hot
                         )

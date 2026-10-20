@@ -80,6 +80,7 @@ import app.wisp.core.designsystem.components.WispChip
 import app.wisp.core.designsystem.components.WispSheet
 import app.wisp.core.designsystem.components.springPress
 import app.wisp.core.designsystem.theme.WispTheme
+import app.wisp.ui.BoardIcon
 import coil.compose.AsyncImage
 import kotlin.math.roundToInt
 
@@ -155,11 +156,14 @@ fun BoardDetailView(
                         )
                     }
                     Column {
-                        Text(
-                            text = "${board.icon} ${board.name}",
-                            style = typography.headlineMedium,
-                            color = colors.text
-                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(spacing.small), verticalAlignment = Alignment.CenterVertically) {
+                            BoardIcon(
+                                key = board.icon,
+                                contentDescription = "${board.name} icon",
+                                modifier = Modifier.size(spacing.large)
+                            )
+                            Text(text = board.name, style = typography.headlineMedium, color = colors.text)
+                        }
                         Text(
                             text = "${items.size} items",
                             style = typography.labelSmall,
@@ -441,7 +445,11 @@ fun BoardDetailView(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(spacing.small)
                             ) {
-                                Text(text = targetBoard.icon, style = typography.headlineMedium)
+                                BoardIcon(
+                                    key = targetBoard.icon,
+                                    contentDescription = "${targetBoard.name} icon",
+                                    modifier = Modifier.size(spacing.large)
+                                )
                                 Text(
                                     text = targetBoard.name,
                                     style = typography.titleMedium,
@@ -677,7 +685,7 @@ fun CanvasMoodboardView(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = item.store ?: "✨",
+                                    text = item.store ?: "Saved item",
                                     style = typography.titleMedium,
                                     color = colors.accentB
                                 )
@@ -813,7 +821,7 @@ fun CompactListView(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = item.store?.take(2)?.uppercase() ?: "✨",
+                                    text = item.store?.take(2)?.uppercase() ?: "WI",
                                     style = typography.titleSmall(colors.text)
                                 )
                             }

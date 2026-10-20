@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
     private val themeViewModel: ThemeViewModel by viewModels()
     private val navigationViewModel: NavigationViewModel by viewModels()
     private val boardsViewModel: BoardsViewModel by viewModels()
+    private val onboardingViewModel: OnboardingViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,13 +41,16 @@ class MainActivity : ComponentActivity() {
             val selectedBoard by boardsViewModel.selectedBoard.collectAsStateWithLifecycle()
             val selectedItem by boardsViewModel.selectedItem.collectAsStateWithLifecycle()
             val selectedItemIds by boardsViewModel.selectedItemIds.collectAsStateWithLifecycle()
+            val onboardingCompleted by onboardingViewModel.isCompleted.collectAsStateWithLifecycle()
 
             WispTheme(themeSpec = themeSpec) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = WispTheme.colors.background
                 ) {
-                    HomeScreen(
+                    if (!onboardingCompleted) {
+                        OnboardingScreen(onComplete = onboardingViewModel::complete)
+                    } else HomeScreen(
                         boards = boards,
                         items = items,
                         priceDrops = priceDrops,
