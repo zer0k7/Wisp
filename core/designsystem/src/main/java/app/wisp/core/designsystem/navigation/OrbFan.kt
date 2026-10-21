@@ -1,16 +1,10 @@
 package app.wisp.core.designsystem.navigation
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import app.wisp.core.designsystem.theme.WispTheme
 
@@ -22,32 +16,41 @@ fun OrbFan(
     onSpaceSelected: (NavSpace) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val colors = WispTheme.colors
     val spacing = WispTheme.spacing
-    val shapes = WispTheme.shapes
+    val density = LocalDensity.current
+    val itemHeight = spacing.large + (spacing.extraSmall * 2f)
+    val itemStep = itemHeight + spacing.extraSmall
+    val diagonalTravel = spacing.large * 2f
 
-    AnimatedVisibility(
-        visible = isOpen,
-        modifier = modifier,
-        enter = fadeIn() + scaleIn(),
-        exit = fadeOut() + scaleOut()
-    ) {
-        Column(
-            modifier = Modifier
-                .background(colors.surface, shapes.card)
-                .border(spacing.stroke, colors.outline, shapes.card)
-                .padding(spacing.small),
-            verticalArrangement = Arrangement.spacedBy(spacing.extraSmall)
-        ) {
+    BoxWithConstraints(modifier = modifier) {
+        val itemWidth = if (maxWidth > diagonalTravel) {
+            maxWidth - diagonalTravel
+        } else {
+            maxWidth
+        }
+        val availableWidthPx = with(density) { maxWidth.toPx() }
+        val itemWidthPx = with(density) { itemWidth.toPx() }
+        val itemStepPx = with(density) { itemStep.toPx() }
+        val diagonalTravelPx = with(density) { diagonalTravel.toPx() }
+
+        // The items share one invisible trajectory rather than a containing panel.
+        Box {
             NavSpace.spaces.forEachIndexed { index, space ->
+                val xOffset = if (dockEdge == DockEdge.RIGHT) {
+                    (availableWidthPx - itemWidthPx) -
+                        (diagonalTravelPx * index / (NavSpace.spaces.size - 1).coerceAtLeast(1))
+                } else {
+                    diagonalTravelPx * index / (NavSpace.spaces.size - 1).coerceAtLeast(1)
+                }
                 OrbFanItem(
                     space = space,
                     isSelected = space == currentSpace,
-                    targetOffsetX = 0f,
-                    targetOffsetY = 0f,
+                    targetOffsetX = xOffset,
+                    targetOffsetY = itemStepPx * index,
                     isOpen = isOpen,
-                    animationDelayMs = index * 25,
-                    onClick = { onSpaceSelected(space) }
+                    animationDelayMs = index * 55,
+                    onClick = { onSpaceSelected(space) },
+                    modifier = Modifier.requiredWidth(itemWidth)
                 )
             }
         }

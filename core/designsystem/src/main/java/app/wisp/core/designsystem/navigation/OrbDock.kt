@@ -36,6 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -77,12 +79,13 @@ fun OrbDock(
         val orbSizePx = with(density) { spacing.orbSize.toPx() }
         val marginPx = with(density) { spacing.medium.toPx() }
         val topMarginPx = with(density) { spacing.extraLarge.toPx() }
-        val menuWidth = spacing.orbSize * 3f
-        val menuRowHeight = spacing.large + (spacing.extraSmall * 2f)
-        val menuGap = spacing.extraSmall
-        val fanHeight = (spacing.small * 2f) +
-            (menuRowHeight * NavSpace.spaces.size.toFloat()) +
-            (menuGap * (NavSpace.spaces.size - 1).toFloat())
+        val actionSize = spacing.orbSize * 0.78f
+        val menuWidth = spacing.orbSize * 3.2f
+        val menuRowHeight = actionSize + (spacing.extraSmall * 2f)
+        val menuGap = spacing.small
+        val fanItemStep = menuRowHeight + spacing.extraSmall
+        val fanHeight = menuRowHeight +
+            (fanItemStep * (NavSpace.spaces.size - 1).toFloat())
         val menuHeight = fanHeight + menuGap + menuRowHeight
         val menuWidthPx = with(density) { menuWidth.toPx() }
         val menuRowHeightPx = with(density) { menuRowHeight.toPx() }
@@ -111,6 +114,14 @@ fun OrbDock(
             targetValue = if (isFanOpen) 135f else 0f,
             animationSpec = spring(dampingRatio = 0.75f),
             label = "OrbIconRotation"
+        )
+        val quickAddProgress by animateFloatAsState(
+            targetValue = if (isFanOpen && !isDragging) 1f else 0f,
+            animationSpec = spring(
+                dampingRatio = 0.75f,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "OrbQuickAddProgress"
         )
 
         // Custom accessibility actions for TalkBack
@@ -160,7 +171,7 @@ fun OrbDock(
                 .size(spacing.orbSize),
             contentAlignment = Alignment.Center
         ) {
-            // Stacked menu stays aligned to the orb and is clamped to the available screen.
+            // The diagonal fan stays aligned to the orb and is clamped to the available screen.
             OrbFan(
                 isOpen = isFanOpen && !isDragging,
                 currentSpace = currentSpace,
@@ -176,7 +187,7 @@ fun OrbDock(
                     .requiredHeight(fanHeight)
             )
 
-            if (isFanOpen && !isDragging) {
+            if (isFanOpen && !isDragging || quickAddProgress > 0.01f) {
                 Box(
                     modifier = Modifier
                         .offset {
@@ -187,34 +198,47 @@ fun OrbDock(
                         }
                         .requiredWidth(menuWidth)
                         .requiredHeight(menuRowHeight)
-                        .clip(WispTheme.shapes.pill)
-                        .background(colors.surfaceHigh)
-                        .border(spacing.stroke, colors.outline, WispTheme.shapes.pill)
-                        .springPress(onClick = {
-                            isFanOpen = false
-                            onQuickAdd()
-                        })
+                        .scale(quickAddProgress)
+                        .alpha(quickAddProgress)
                         .semantics {
                             role = Role.Button
                             contentDescription = "Add item"
                         }
-                        .padding(horizontal = spacing.medium, vertical = spacing.extraSmall),
+                        .padding(spacing.extraSmall),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(spacing.small)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = null,
-                            tint = colors.text,
-                            modifier = Modifier.size(spacing.large)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(actionSize)
+                                .clip(WispTheme.shapes.pill)
+                                .background(WispTheme.brandGradient)
+                                .border(spacing.strokeThick, colors.surfaceHigh, WispTheme.shapes.pill)
+                                .springPress(onClick = {
+                                    isFanOpen = false
+                                    onQuickAdd()
+                                }),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = null,
+                                tint = colors.background,
+                                modifier = Modifier.size(spacing.large)
+                            )
+                        }
                         Text(
                             "Add item",
                             style = WispTheme.typography.labelLarge,
-                            color = colors.text
+                            color = colors.text,
+                            modifier = Modifier
+                                .clip(WispTheme.shapes.pill)
+                                .background(colors.surface.copy(alpha = 0.92f))
+                                .border(spacing.stroke, colors.outline, WispTheme.shapes.pill)
+                                .padding(horizontal = spacing.small, vertical = spacing.extraSmall)
                         )
                     }
                 }
