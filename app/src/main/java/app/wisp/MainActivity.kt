@@ -14,6 +14,8 @@ import app.wisp.core.designsystem.theme.WispTheme
 import app.wisp.ui.BoardsViewModel
 import app.wisp.ui.HomeScreen
 import app.wisp.ui.NavigationViewModel
+import app.wisp.ui.OnboardingScreen
+import app.wisp.ui.OnboardingViewModel
 import app.wisp.ui.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
