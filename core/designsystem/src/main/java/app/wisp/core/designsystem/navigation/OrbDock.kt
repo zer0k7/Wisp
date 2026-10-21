@@ -11,9 +11,13 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -32,9 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -46,7 +48,6 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import app.wisp.core.designsystem.theme.WispTheme
 import app.wisp.core.designsystem.components.springPress
 import kotlinx.coroutines.launch
@@ -76,6 +77,18 @@ fun OrbDock(
         val orbSizePx = with(density) { spacing.orbSize.toPx() }
         val marginPx = with(density) { spacing.medium.toPx() }
         val topMarginPx = with(density) { spacing.extraLarge.toPx() }
+        val menuWidth = spacing.orbSize * 3f
+        val menuRowHeight = spacing.large + (spacing.extraSmall * 2f)
+        val menuGap = spacing.extraSmall
+        val fanHeight = (spacing.small * 2f) +
+            (menuRowHeight * NavSpace.spaces.size.toFloat()) +
+            (menuGap * (NavSpace.spaces.size - 1).toFloat())
+        val menuHeight = fanHeight + menuGap + menuRowHeight
+        val menuWidthPx = with(density) { menuWidth.toPx() }
+        val menuRowHeightPx = with(density) { menuRowHeight.toPx() }
+        val menuGapPx = with(density) { menuGap.toPx() }
+        val fanHeightPx = with(density) { fanHeight.toPx() }
+        val menuHeightPx = with(density) { menuHeight.toPx() }
 
         val animOffsetX = remember {
             Animatable(initialXRatio * (screenWidthPx - orbSizePx))
@@ -110,11 +123,31 @@ fun OrbDock(
                 }
             }
             val quickAddAction = CustomAccessibilityAction(label = "Add item") {
+                isFanOpen = false
                 onQuickAdd()
                 true
             }
             spaceActions + quickAddAction
         }
+
+        val menuLeftPx = when (currentDockEdge) {
+            DockEdge.RIGHT -> animOffsetX.value - menuWidthPx - marginPx
+            DockEdge.LEFT -> animOffsetX.value + orbSizePx + marginPx
+        }.coerceIn(
+            marginPx,
+            (screenWidthPx - menuWidthPx - marginPx).coerceAtLeast(marginPx)
+        )
+        val menuTopPx = (
+            animOffsetY.value + (orbSizePx - menuHeightPx) / 2f
+        ).coerceIn(
+            topMarginPx,
+            (screenHeightPx - menuHeightPx - marginPx).coerceAtLeast(topMarginPx)
+        )
+        val fanOffsetX = menuLeftPx - animOffsetX.value - (orbSizePx - menuWidthPx) / 2f
+        val fanOffsetY = menuTopPx + menuRowHeightPx + menuGapPx - animOffsetY.value -
+            (orbSizePx - fanHeightPx) / 2f
+        val quickAddOffsetY = menuTopPx - animOffsetY.value -
+            (orbSizePx - menuRowHeightPx) / 2f
 
         Box(
             modifier = Modifier
@@ -127,7 +160,7 @@ fun OrbDock(
                 .size(spacing.orbSize),
             contentAlignment = Alignment.Center
         ) {
-            // Arc Fan behind/around the orb
+            // Stacked menu stays aligned to the orb and is clamped to the available screen.
             OrbFan(
                 isOpen = isFanOpen && !isDragging,
                 currentSpace = currentSpace,
@@ -136,13 +169,24 @@ fun OrbDock(
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onSpaceSelected(space)
                     isFanOpen = false
-                }
+                },
+                modifier = Modifier
+                    .offset { IntOffset(fanOffsetX.roundToInt(), fanOffsetY.roundToInt()) }
+                    .requiredWidth(menuWidth)
+                    .requiredHeight(fanHeight)
             )
 
             if (isFanOpen && !isDragging) {
                 Box(
                     modifier = Modifier
-                        .offset(y = -spacing.extraLarge)
+                        .offset {
+                            IntOffset(
+                                fanOffsetX.roundToInt(),
+                                quickAddOffsetY.roundToInt()
+                            )
+                        }
+                        .requiredWidth(menuWidth)
+                        .requiredHeight(menuRowHeight)
                         .clip(WispTheme.shapes.pill)
                         .background(colors.surfaceHigh)
                         .border(spacing.stroke, colors.outline, WispTheme.shapes.pill)
@@ -154,10 +198,25 @@ fun OrbDock(
                             role = Role.Button
                             contentDescription = "Add item"
                         }
-                        .padding(horizontal = spacing.small, vertical = spacing.extraSmall),
+                        .padding(horizontal = spacing.medium, vertical = spacing.extraSmall),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Add item", style = WispTheme.typography.labelSmall, color = colors.text)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.small)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = null,
+                            tint = colors.text,
+                            modifier = Modifier.size(spacing.large)
+                        )
+                        Text(
+                            "Add item",
+                            style = WispTheme.typography.labelLarge,
+                            color = colors.text
+                        )
+                    }
                 }
             }
 
@@ -171,13 +230,13 @@ fun OrbDock(
                         colors = listOf(
                             colors.accentA.copy(alpha = 0.40f),
                             colors.accentB.copy(alpha = 0.20f),
-                            Color.Transparent
+                            colors.background.copy(alpha = 0f)
                         )
                     )
                 )
             }
 
-            // The Glowing 56dp Orb
+            // The theme-sized glowing orb
             Box(
                 modifier = Modifier
                     .size(spacing.orbSize)
@@ -261,7 +320,7 @@ fun OrbDock(
                 Icon(
                     imageVector = if (isFanOpen) Icons.Rounded.Close else Icons.Rounded.Add,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = colors.background,
                     modifier = Modifier
                         .size(spacing.large)
                         .rotate(orbIconRotation)

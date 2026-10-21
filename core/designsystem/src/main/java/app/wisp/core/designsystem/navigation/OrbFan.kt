@@ -1,12 +1,18 @@
 package app.wisp.core.designsystem.navigation
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
+import app.wisp.core.designsystem.theme.WispTheme
 
 @Composable
 fun OrbFan(
@@ -16,31 +22,34 @@ fun OrbFan(
     onSpaceSelected: (NavSpace) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val density = LocalDensity.current
-    val arcRadiusPx = with(density) { 110.dp.toPx() }
+    val colors = WispTheme.colors
+    val spacing = WispTheme.spacing
+    val shapes = WispTheme.shapes
 
-    val arcPositions = remember(dockEdge, arcRadiusPx) {
-        OrbPhysics.calculateArcPositions(
-            dockEdge = dockEdge,
-            radius = arcRadiusPx,
-            spaces = NavSpace.spaces
-        )
-    }
-
-    Box(
+    AnimatedVisibility(
+        visible = isOpen,
         modifier = modifier,
-        contentAlignment = Alignment.Center
+        enter = fadeIn() + scaleIn(),
+        exit = fadeOut() + scaleOut()
     ) {
-        arcPositions.forEachIndexed { index, itemPos ->
-            OrbFanItem(
-                space = itemPos.space,
-                isSelected = itemPos.space == currentSpace,
-                targetOffsetX = itemPos.offsetX,
-                targetOffsetY = itemPos.offsetY,
-                isOpen = isOpen,
-                animationDelayMs = index * 25,
-                onClick = { onSpaceSelected(itemPos.space) }
-            )
+        Column(
+            modifier = Modifier
+                .background(colors.surface, shapes.card)
+                .border(spacing.stroke, colors.outline, shapes.card)
+                .padding(spacing.small),
+            verticalArrangement = Arrangement.spacedBy(spacing.extraSmall)
+        ) {
+            NavSpace.spaces.forEachIndexed { index, space ->
+                OrbFanItem(
+                    space = space,
+                    isSelected = space == currentSpace,
+                    targetOffsetX = 0f,
+                    targetOffsetY = 0f,
+                    isOpen = isOpen,
+                    animationDelayMs = index * 25,
+                    onClick = { onSpaceSelected(space) }
+                )
+            }
         }
     }
 }
