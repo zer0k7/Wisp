@@ -531,7 +531,7 @@ private fun RealBoardsGrid(
                 Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
                     Text(
                         text = "No boards yet",
-                        style = typography.titleLarge,
+                        style = typography.titleMedium,
                         color = colors.text
                     )
                     Text(
