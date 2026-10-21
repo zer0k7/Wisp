@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
@@ -22,17 +21,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import app.wisp.core.designsystem.theme.ThemePreset
 import app.wisp.core.designsystem.theme.WispTheme
 @Composable
 fun WispScaffold(
     currentSpace: NavSpace,
     onSpaceSelected: (NavSpace) -> Unit,
     navStyle: NavStyleType,
-    onNavStyleSelected: (NavStyleType) -> Unit,
     onQuickAdd: () -> Unit,
-    onThemePresetSelected: (ThemePreset) -> Unit,
     modifier: Modifier = Modifier,
     initialXRatio: Float = 0.90f,
     initialYRatio: Float = 0.85f,
@@ -40,6 +35,7 @@ fun WispScaffold(
     content: @Composable (NavSpace) -> Unit
 ) {
     val colors = WispTheme.colors
+    val spacing = WispTheme.spacing
     var isCommandBarOpen by remember { mutableStateOf(false) }
 
     val pagerState = rememberPagerState(
@@ -98,7 +94,7 @@ fun WispScaffold(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
+                .height(spacing.extraLarge)
                 .align(Alignment.TopCenter)
                 .draggable(
                     orientation = Orientation.Vertical,
@@ -157,14 +153,7 @@ fun WispScaffold(
             onSpaceSelected = { space ->
                 isCommandBarOpen = false
                 onSpaceSelected(space)
-            },
-            onNavStyleSelected = { style ->
-                onNavStyleSelected(style)
-            },
-            onThemePresetSelected = { preset ->
-                onThemePresetSelected(preset)
-            },
-            currentNavStyle = navStyle
+            }
         )
     }
 }

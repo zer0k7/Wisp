@@ -4,8 +4,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Inbox
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -37,9 +37,9 @@ enum class NavSpace(
         contentDescription = "Navigate to Search space"
     ),
     YOU(
-        title = "You",
-        icon = Icons.Rounded.Person,
-        contentDescription = "Navigate to Profile and Studio space"
+        title = "Settings",
+        icon = Icons.Rounded.Settings,
+        contentDescription = "Navigate to Settings"
     );
 
     companion object {

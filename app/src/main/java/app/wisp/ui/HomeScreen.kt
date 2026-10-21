@@ -19,14 +19,12 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.OpenInNew
@@ -34,7 +32,6 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -110,6 +108,7 @@ fun HomeScreen(
 ) {
     val colors = WispTheme.colors
     val spacing = WispTheme.spacing
+    val shapes = WispTheme.shapes
     val typography = WispTheme.typography
     val haptic = LocalHapticFeedback.current
 
@@ -122,6 +121,7 @@ fun HomeScreen(
     var isNewBoardSheetOpen by remember { mutableStateOf(false) }
     var newBoardName by remember { mutableStateOf("") }
     var newBoardIcon by remember { mutableStateOf("folder") }
+    var newBoardError by remember { mutableStateOf<String?>(null) }
 
     var internalSelectedSpace by remember { mutableStateOf(currentSpace) }
     var internalNavStyle by remember { mutableStateOf(navStyle) }
@@ -138,15 +138,10 @@ fun HomeScreen(
             onSpaceSelected(space)
         },
         navStyle = effectiveNavStyle,
-        onNavStyleSelected = { style ->
-            internalNavStyle = style
-            onNavStyleSelected(style)
-        },
         onQuickAdd = {
             internalQuickAdd = true
             onTriggerQuickAdd()
         },
-        onThemePresetSelected = onPresetSelected,
         initialXRatio = initialXRatio,
         initialYRatio = initialYRatio,
         onOrbPositionChanged = onOrbPositionChanged,
@@ -364,26 +359,75 @@ fun HomeScreen(
                             )
                             WispTextField(
                                 value = newBoardName,
-                                onValueChange = { newBoardName = it },
-                                placeholder = "Board name (e.g. Dream Travel, Sneaker Grail)..."
+                                onValueChange = {
+                                    newBoardName = it
+                                    newBoardError = null
+                                },
+                                placeholder = "Board name (for example, Gifts or Travel)..."
                             )
 
                             Text(
-                                text = "Choose an icon",
+                                text = "Choose a clear label",
                                 style = typography.labelLarge,
                                 color = colors.textMuted
                             )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(spacing.small)
-                            ) {
-                                boardIconOptions.forEach { (key, _) ->
-                                    WispChip(
-                                        label = key.replaceFirstChar { it.uppercase() },
-                                        selected = newBoardIcon == key,
-                                        onClick = { newBoardIcon = key }
-                                    )
+                            boardIconOptions.chunked(2).forEach { rowOptions ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(spacing.small)
+                                ) {
+                                    rowOptions.forEach { option ->
+                                        val selected = newBoardIcon == option.key
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(shapes.card)
+                                                .then(
+                                                    if (selected) {
+                                                        Modifier.background(WispTheme.brandGradient)
+                                                    } else {
+                                                        Modifier
+                                                            .background(colors.surfaceHigh)
+                                                            .border(spacing.stroke, colors.outline, shapes.card)
+                                                    }
+                                                )
+                                                .springPress(onClick = { newBoardIcon = option.key })
+                                                .semantics {
+                                                    role = Role.RadioButton
+                                                    contentDescription = "${option.label} board icon, " +
+                                                        if (selected) "selected" else "not selected"
+                                                }
+                                                .padding(spacing.small)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(spacing.small)
+                                            ) {
+                                                BoardIcon(
+                                                    key = option.key,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(spacing.large)
+                                                )
+                                                Text(
+                                                    text = option.label,
+                                                    style = typography.labelSmall,
+                                                    color = if (selected) colors.background else colors.text
+                                                )
+                                            }
+                                        }
+                                    }
+                                    if (rowOptions.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
                                 }
+                            }
+
+                            newBoardError?.let { error ->
+                                Text(
+                                    text = error,
+                                    style = typography.labelSmall,
+                                    color = colors.danger
+                                )
                             }
 
                             Row(
@@ -402,7 +446,10 @@ fun HomeScreen(
                                             onCreateBoard(newBoardName, newBoardIcon)
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             newBoardName = ""
+                                            newBoardError = null
                                             isNewBoardSheetOpen = false
+                                        } else {
+                                            newBoardError = "Enter a board name first."
                                         }
                                     }
                                 )
@@ -479,129 +526,121 @@ private fun RealBoardsGrid(
             }
         }
 
-        // 2-Column Grid of Board Cards
-        val chunkedBoards = boards.chunked(2)
-        chunkedBoards.forEach { rowBoards ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(spacing.medium)
-            ) {
-                rowBoards.forEach { board ->
+        if (boards.isEmpty()) {
+            WispCard(modifier = Modifier.fillMaxWidth(), glass = true) {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                    Text(
+                        text = "No boards yet",
+                        style = typography.titleLarge,
+                        color = colors.text
+                    )
+                    Text(
+                        text = "Create one for a group of things you want to remember.",
+                        style = typography.bodyMedium,
+                        color = colors.textMuted
+                    )
+                    WispButton(
+                        text = "Create your first board",
+                        onClick = onOpenCreateBoard
+                    )
+                }
+            }
+        } else {
+            Text(
+                text = "Choose a board",
+                style = typography.labelLarge,
+                color = colors.textMuted
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                boards.forEach { board ->
                     val boardItems = items.filter { it.boardId == board.id }
-                    WispCard(
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .springPress(onClick = { onOpenBoard(board) }),
-                        glass = true
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                BoardIcon(
-                                    key = board.icon,
-                                    contentDescription = "${board.name} icon",
-                                    modifier = Modifier.size(spacing.extraLarge)
-                                )
-                                Text(
-                                    text = "${boardItems.size} items",
-                                    style = typography.labelSmall,
-                                    color = colors.accentB
-                                )
+                            .fillMaxWidth()
+                            .clip(shapes.card)
+                            .background(colors.surfaceHigh.copy(alpha = 0.72f))
+                            .border(spacing.stroke, colors.outline, shapes.card)
+                            .springPress(onClick = { onOpenBoard(board) })
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = "Open ${board.name} board"
                             }
+                            .padding(spacing.medium),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.medium)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(spacing.extraLarge)
+                                .clip(shapes.chip)
+                                .background(colors.surface),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            BoardIcon(
+                                key = board.icon,
+                                contentDescription = "${board.name} icon",
+                                modifier = Modifier.size(spacing.large)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = board.name,
                                 style = typography.titleMedium,
                                 color = colors.text
                             )
-                            if (boardItems.isNotEmpty()) {
-                                Text(
-                                    text = boardItems.first().title,
-                                    style = typography.labelSmall,
-                                    color = colors.textMuted,
-                                    maxLines = 1
-                                )
-                            }
+                            Text(
+                                text = if (boardItems.isEmpty()) {
+                                    "No items yet"
+                                } else {
+                                    "${boardItems.size} ${if (boardItems.size == 1) "item" else "items"}"
+                                },
+                                style = typography.bodySmall(colors.textMuted)
+                            )
                         }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = null,
+                            tint = colors.textMuted,
+                            modifier = Modifier
+                                .size(spacing.medium)
+                                .rotate(180f)
+                        )
                     }
                 }
-                if (rowBoards.size == 1) {
-                    // Dashed "+ New Board" Card
-                    DashedNewBoardCard(
-                        modifier = Modifier.weight(1f),
-                        onClick = onOpenCreateBoard
+            }
+        }
+
+        WispCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .springPress(onClick = onOpenCreateBoard),
+            glass = false
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(spacing.medium)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = null,
+                    tint = colors.accentB,
+                    modifier = Modifier.size(spacing.large)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Create a board",
+                        style = typography.titleMedium,
+                        color = colors.text
+                    )
+                    Text(
+                        text = "Start a new group for saved items.",
+                        style = typography.bodySmall(colors.textMuted)
                     )
                 }
             }
         }
 
-        // If even number of boards, show "+ New Board" tile at the end
-        if (boards.size % 2 == 0) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(spacing.medium)
-            ) {
-                DashedNewBoardCard(
-                    modifier = Modifier.weight(1f),
-                    onClick = onOpenCreateBoard
-                )
-                Spacer(modifier = Modifier.weight(1f))
-            }
-        }
-
         Spacer(modifier = Modifier.height(spacing.extraLarge))
-    }
-}
-
-@Composable
-private fun DashedNewBoardCard(
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    val colors = WispTheme.colors
-    val spacing = WispTheme.spacing
-    val shapes = WispTheme.shapes
-    val typography = WispTheme.typography
-
-    Box(
-        modifier = modifier
-            .clip(shapes.card)
-            .background(colors.surfaceHigh.copy(alpha = 0.5f))
-            .border(
-                width = spacing.stroke,
-                color = colors.outline,
-                shape = shapes.card
-            )
-            .springPress(onClick = onClick)
-            .padding(spacing.large),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(spacing.small)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(colors.surface),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
-                    contentDescription = "Create new board",
-                    tint = colors.accentB,
-                    modifier = Modifier.size(spacing.large)
-                )
-            }
-            Text(
-                text = "New Board",
-                style = typography.titleMedium,
-                color = colors.accentB
-            )
-        }
     }
 }
 

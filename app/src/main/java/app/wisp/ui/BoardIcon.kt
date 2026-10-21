@@ -14,17 +14,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.wisp.core.designsystem.theme.WispTheme
 
-val boardIconOptions: List<Pair<String, ImageVector>> = listOf(
-    "folder" to Icons.Rounded.Folder,
-    "devices" to Icons.Rounded.Devices,
-    "style" to Icons.Rounded.Checkroom,
-    "gifts" to Icons.Rounded.CardGiftcard,
-    "books" to Icons.Rounded.MenuBook,
-    "home" to Icons.Rounded.Home,
-    "travel" to Icons.Rounded.Flight
+data class BoardIconOption(
+    val key: String,
+    val label: String,
+    val icon: ImageVector
 )
 
-fun boardIconFor(key: String): ImageVector = boardIconOptions.firstOrNull { it.first == key }?.second
+val boardIconOptions: List<BoardIconOption> = listOf(
+    BoardIconOption("folder", "General", Icons.Rounded.Folder),
+    BoardIconOption("devices", "Tech", Icons.Rounded.Devices),
+    BoardIconOption("style", "Clothing", Icons.Rounded.Checkroom),
+    BoardIconOption("gifts", "Gifts", Icons.Rounded.CardGiftcard),
+    BoardIconOption("books", "Books", Icons.Rounded.MenuBook),
+    BoardIconOption("home", "Home", Icons.Rounded.Home),
+    BoardIconOption("travel", "Travel", Icons.Rounded.Flight)
+)
+
+fun boardIconFor(key: String): ImageVector = boardIconOptions.firstOrNull { it.key == key }?.icon
     ?: Icons.Rounded.Folder
 
 @Composable

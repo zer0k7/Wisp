@@ -123,7 +123,7 @@ class BoardsViewModelTest {
                 val seedBoard = BoardEntity(
                     id = "test_board",
                     name = "Tech Setup",
-                    icon = "💻"
+                    icon = "devices"
                 )
                 saveBoard(seedBoard)
             }
@@ -167,12 +167,12 @@ class BoardsViewModelTest {
 
     @Test
     fun testCreateBoardAddsBoardToRepository() = runTest(testDispatcher) {
-        viewModel.createBoard(name = "Books & Comics", icon = "📚")
+        viewModel.createBoard(name = "Books & Comics", icon = "books")
         advanceUntilIdle()
 
         val created = fakeRepo.boardsList.find { it.name == "Books & Comics" }
         assertNotNull(created)
-        assertEquals("📚", created?.icon)
+        assertEquals("books", created?.icon)
     }
 
     @Test

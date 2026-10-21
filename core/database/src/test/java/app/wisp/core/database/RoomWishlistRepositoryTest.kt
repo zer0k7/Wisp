@@ -64,7 +64,7 @@ class RoomWishlistRepositoryTest {
         val board = BoardEntity(
             id = "board_books",
             name = "Books to Read",
-            icon = "📚",
+            icon = "books",
             accentColorHex = "#22E5C4"
         )
         repository.saveBoard(board)
@@ -72,7 +72,7 @@ class RoomWishlistRepositoryTest {
         val retrieved = repository.getBoard("board_books")
         assertNotNull(retrieved)
         assertEquals("Books to Read", retrieved?.name)
-        assertEquals("📚", retrieved?.icon)
+        assertEquals("books", retrieved?.icon)
     }
 
     @Test
